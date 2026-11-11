@@ -1,0 +1,44 @@
+{
+  "description": "Carpetas de plantilla que inkt validate debe rechazar (docs/contrato-plantillas.md §12, V30–V38). No se guardan en git: el test copia 'base' a una carpeta temporal y aplica 'ops' en orden. Así no hay en el repositorio archivos que violen sus propias reglas, y el CRLF y el BOM sobreviven (.gitattributes convertiría un CRLF guardado). Operaciones: delete {path}; write {path, content, bom?, crlf?, latin1?} (latin1 codifica el contenido en ISO-8859-1); replace {path, old, new}; symlink {path, target} (en Windows sin permiso de enlaces, el caso se omite con t.Skip); fill {path, bytes} (archivo de ceros); copies {dir, count} (archivos .tex vacíos numerados).",
+  "base": "../templates/prueba/ok-minima",
+  "cases": [
+    { "code": "V30", "name": "sin-changelog", "ops": [{ "op": "delete", "path": "CHANGELOG.md" }] },
+    {
+      "code": "V30", "name": "changelog-sin-version",
+      "ops": [{ "op": "write", "path": "CHANGELOG.md", "content": "# Cambios\n\n## 0.9.0\n\n- Otra versión.\n" }]
+    },
+    { "code": "V30", "name": "sin-readme", "ops": [{ "op": "delete", "path": "README.md" }] },
+    { "code": "V31", "name": "nombre-con-espacio", "ops": [{ "op": "write", "path": "src/mi archivo.tex", "content": "% x\n" }] },
+    { "code": "V31", "name": "nombre-con-acento", "ops": [{ "op": "write", "path": "src/introducción.tex", "content": "% x\n" }] },
+    { "code": "V32", "name": "latexmkrc", "ops": [{ "op": "write", "path": "src/.latexmkrc", "content": "$pdf_mode = 1;\n" }] },
+    { "code": "V32", "name": "makefile", "ops": [{ "op": "write", "path": "src/Makefile", "content": "all:\n\techo hola\n" }] },
+    { "code": "V32", "name": "script", "ops": [{ "op": "write", "path": "src/compilar.sh", "content": "#!/bin/sh\necho hola\n" }] },
+    { "code": "V32", "name": "meta-a-mano", "ops": [{ "op": "write", "path": "src/.creative-ink-meta", "content": "{\"version\":1,\"mainFile\":\"main.tex\"}\n" }] },
+    { "code": "V33", "name": "enlace-simbolico", "ops": [{ "op": "symlink", "path": "src/fuera.tex", "target": "../../../../../../README.md" }] },
+    { "code": "V34", "name": "demasiados-archivos", "ops": [{ "op": "copies", "dir": "src/relleno", "count": 2001 }] },
+    { "code": "V34", "name": "demasiado-grande", "ops": [{ "op": "fill", "path": "src/img/enorme.png", "bytes": 209715201 }] },
+    {
+      "code": "V35", "name": "input-hacia-fuera",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\include{secciones/introduccion}", "new": "\\input{../../otra/plantilla}" }]
+    },
+    {
+      "code": "V35", "name": "graphicspath-hacia-fuera",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\usepackage{graphicx}", "new": "\\usepackage{graphicx}\n\\graphicspath{{img/}{../../../Img/}}" }]
+    },
+    {
+      "code": "V36", "name": "params-despues-de-defaults",
+      "ops": [
+        { "op": "replace", "path": "src/main.tex", "old": "\\InputIfFileExists{ink-params}{}{}\n", "new": "" },
+        { "op": "replace", "path": "src/main.tex", "old": "\\providecommand{\\inkItem}[1]{\\item #1}", "new": "\\providecommand{\\inkItem}[1]{\\item #1}\n\\InputIfFileExists{ink-params}{}{}" }
+      ]
+    },
+    { "code": "V36", "name": "sin-ink-params", "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\InputIfFileExists{ink-params}{}{}\n", "new": "" }] },
+    {
+      "code": "V37", "name": "macro-sin-providecommand",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\providecommand{\\ColorTema}{Azul}\n", "new": "" }]
+    },
+    { "code": "V38", "name": "crlf", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "crlf": true }] },
+    { "code": "V38", "name": "bom", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "bom": true }] },
+    { "code": "V38", "name": "latin1", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "latin1": true }] }
+  ]
+}

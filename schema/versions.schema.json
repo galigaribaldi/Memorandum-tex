@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://galigaribaldi.github.io/Memorandum-tex/schema/v1/versions.schema.json",
+  "title": "Versiones publicadas de una plantilla (contrato v1)",
+  "description": "Ver docs/contrato-plantillas.md §6. Más nueva primero; rutas relativas a este archivo.",
+  "type": "object",
+  "required": ["schemaVersion", "id", "versions"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "$ref": "template.schema.json#/definitions/id" },
+    "versions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["version", "manifest"],
+        "properties": {
+          "version": { "$ref": "template.schema.json#/definitions/semver" },
+          "manifest": { "$ref": "index.schema.json#/definitions/ref" },
+          "publishedAt": { "type": "string", "format": "date-time" }
+        }
+      }
+    }
+  }
+}

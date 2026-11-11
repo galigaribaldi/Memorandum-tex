@@ -1,0 +1,11 @@
+{
+  "$schema": "../../../schema/pack.schema.json",
+  "schemaVersion": 1,
+  "id": "prueba",
+  "name": "Paquete de prueba",
+  "description": "Fixture: un paquete con una plantilla lista y otra con paquetes faltantes.",
+  "templates": [
+    { "id": "ok-minima" },
+    { "id": "con-paquetes", "version": "1.0.0" }
+  ]
+}

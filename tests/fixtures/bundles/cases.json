@@ -1,0 +1,81 @@
+{
+  "description": "Bundles que genera el test de tools/pkg/bundle (y el generador de fixtures de M2) para comprobar bundle.SafeExtract y bundle.VerifySHA256 (docs/contrato-plantillas.md §9 y §13). No se guardan zips en git: se construyen con fecha fija, entradas ordenadas y Deflate, así el sha256 es el mismo en cualquier sistema. 'from' empaqueta una plantilla con inkt bundle; 'entries' escribe entradas a mano (path tal cual, sin normalizar; content texto; zeros N bytes de ceros; symlink destino con modo de enlace simbólico); 'omit' quita rutas del bundle generado; 'rename' cambia la carpeta raíz; 'indexSha256' sustituye el hash esperado.",
+  "fixedTime": "2000-01-01T00:00:00Z",
+  "cases": [
+    { "name": "ok-minima-1.0.0.zip", "from": "../templates/prueba/ok-minima", "expect": "ok" },
+    {
+      "name": "checksum-malo.zip", "from": "../templates/prueba/ok-minima",
+      "indexSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expect": "ErrChecksum"
+    },
+    {
+      "name": "zip-slip.zip",
+      "entries": [
+        { "path": "zip-slip/main.tex", "content": "% x\n" },
+        { "path": "zip-slip/../../fuera.tex", "content": "% fuera\n" }
+      ],
+      "expect": "ErrUnsafePath"
+    },
+    {
+      "name": "ruta-absoluta.zip",
+      "entries": [
+        { "path": "ruta-absoluta/main.tex", "content": "% x\n" },
+        { "path": "/tmp/fuera.tex", "content": "% fuera\n" }
+      ],
+      "expect": "ErrUnsafePath"
+    },
+    {
+      "name": "ruta-con-unidad.zip",
+      "entries": [
+        { "path": "ruta-con-unidad/main.tex", "content": "% x\n" },
+        { "path": "ruta-con-unidad/C:/fuera.tex", "content": "% fuera\n" }
+      ],
+      "expect": "ErrUnsafePath"
+    },
+    {
+      "name": "ruta-con-barra-invertida.zip",
+      "entries": [
+        { "path": "ruta-con-barra-invertida/main.tex", "content": "% x\n" },
+        { "path": "ruta-con-barra-invertida/..\\..\\fuera.tex", "content": "% fuera\n" }
+      ],
+      "expect": "ErrUnsafePath"
+    },
+    {
+      "name": "enlace-simbolico.zip",
+      "entries": [
+        { "path": "enlace-simbolico/main.tex", "content": "% x\n" },
+        { "path": "enlace-simbolico/salida.tex", "symlink": "../../../etc/hosts" }
+      ],
+      "expect": "ErrUnsafePath"
+    },
+    {
+      "name": "con-latexmkrc.zip", "from": "../templates/prueba/ok-minima",
+      "entries": [{ "path": "ok-minima/.latexmkrc", "content": "$pdf_mode = 1;\n" }],
+      "expect": "ErrForbiddenFile"
+    },
+    {
+      "name": "con-script.zip", "from": "../templates/prueba/ok-minima",
+      "entries": [{ "path": "ok-minima/compilar.sh", "content": "#!/bin/sh\necho hola\n" }],
+      "expect": "ErrForbiddenFile"
+    },
+    {
+      "name": "dos-raices.zip",
+      "entries": [
+        { "path": "a/main.tex", "content": "% a\n" },
+        { "path": "b/main.tex", "content": "% b\n" }
+      ],
+      "expect": "ErrBundleLayout"
+    },
+    { "name": "sin-meta.zip", "from": "../templates/prueba/ok-minima", "omit": ["ok-minima/.creative-ink-meta"], "expect": "ErrBundleLayout" },
+    { "name": "sin-licencia.zip", "from": "../templates/prueba/ok-minima", "omit": ["ok-minima/LICENSE"], "expect": "ErrBundleLayout" },
+    { "name": "raiz-distinta-del-id.zip", "from": "../templates/prueba/ok-minima", "rename": "otra", "expect": "ErrBundleLayout" },
+    {
+      "name": "bomba.zip",
+      "entries": [
+        { "path": "bomba/main.tex", "content": "% x\n" },
+        { "path": "bomba/relleno.txt", "zeros": 10485760 }
+      ],
+      "expect": "ErrTooLarge"
+    }
+  ]
+}

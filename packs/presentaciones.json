@@ -1,0 +1,12 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "schemaVersion": 1,
+  "id": "presentaciones",
+  "name": "Presentaciones y difusión",
+  "description": "Presentaciones Beamer institucional y SotM Latam, e infografía TikZ en A4 o A3.",
+  "templates": [
+    { "id": "presentacion-institucional" },
+    { "id": "presentacion-sotm-latam" },
+    { "id": "infografia" }
+  ]
+}

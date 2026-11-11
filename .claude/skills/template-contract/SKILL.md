@@ -38,8 +38,10 @@ o, mientras no exista, `docs/integracion-creative-ink.md` §4–§5. Si discrepa
 ```bash
 cd tools && gofmt -l . && go vet ./... && go test -race ./...
 cd tools && GOOS=windows go vet ./... && GOOS=linux go vet ./... && GOOS=darwin go vet ./...
-cd tools && go run ./cmd/inkt validate ../templates ../tests/fixtures   # desde M2
+cd tools && go run ./cmd/inkt validate ../templates                     # desde M2
 ```
+Los fixtures **no** se validan con `inkt validate`: `futura` viola V02 a propósito y los casos inválidos se construyen en
+tiempo de test (`tests/fixtures/README.md`). Los recorre `go test`.
 `gofmt -l` debe salir vacío. Si algo no se pudo verificar (por ejemplo, la descarga real desde GitHub), dilo en el
 informe.
 
@@ -53,3 +55,7 @@ informe.
   compartidos (`\ { } $ & # ^ _ % ~`).
 - **Nunca `api.github.com`:** 60 peticiones por hora sin autenticación. Solo Pages y descargas de Releases.
 - **ETag:** guarda el ETag junto al índice en caché; un `304` reutiliza la caché y no es un error.
+- **Los esquemas usan lookahead (`(?!…)`), que es ECMA-262 y no existe en el RE2 de Go:** las reglas de Go se
+  escriben en código (§12 del contrato), nunca traduciendo el `pattern` del esquema tal cual.
+- **No escribas caracteres invisibles literales en los fixtures** (BOM, espacios de ancho cero): usa el escape JSON
+  (`\ufeff`). El hook de marcas los rechaza y un editor puede borrarlos sin avisar.

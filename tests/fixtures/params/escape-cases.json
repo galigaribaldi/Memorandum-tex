@@ -1,0 +1,14 @@
+{
+  "description": "Casos compartidos de EscapeTeX (docs/contrato-plantillas.md §10). Deben pasar igual con params.EscapeTeX de Memorandum-tex y con core.EscapeTeX de Creative-Ink: una sola pasada, sin volver a escapar lo que ya se sustituyó.",
+  "cases": [
+    { "in": "sin cambios", "out": "sin cambios" },
+    { "in": "\\", "out": "\\textbackslash{}" },
+    { "in": "{x}", "out": "\\{x\\}" },
+    { "in": "$5 & 10%", "out": "\\$5 \\& 10\\%" },
+    { "in": "#1_a", "out": "\\#1\\_a" },
+    { "in": "~^", "out": "\\textasciitilde{}\\textasciicircum{}" },
+    { "in": "\\{}", "out": "\\textbackslash{}\\{\\}" },
+    { "in": "Ñandú «á» — ü", "out": "Ñandú «á» — ü" },
+    { "in": "", "out": "" }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "schemaVersion": 1,
+  "id": "correspondencia",
+  "name": "Correspondencia oficial",
+  "description": "Carta institucional membretada y documento oficial de Apimetro.",
+  "templates": [
+    { "id": "carta-institucional" },
+    { "id": "carta-apimetro" }
+  ]
+}

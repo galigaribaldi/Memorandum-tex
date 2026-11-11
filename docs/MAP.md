@@ -22,14 +22,15 @@ Memorandum-tex/
 │       └── template-contract/SKILL.md     ← manifiesto, índice, paquetes, librería y catálogo
 ├── docs/
 │   ├── MAP.md                     ← este archivo
-│   ├── integracion-creative-ink.md ← plan y requerimientos para el agente de Creative-Ink (contrato v0)
-│   ├── contrato-plantillas.md     ← ⏳ M1: especificación v1 (reemplaza a §4 de la integración)
-│   └── guia-nueva-plantilla.md    ← ⏳ M1: paso a paso para colaboradores
-├── schema/                        ← ⏳ M1
-│   ├── template.schema.json       ← autocompletado y validación del manifiesto en el editor
-│   ├── index.schema.json
-│   └── pack.schema.json
-├── packs/                         ← ⏳ M1: <pack-id>.json (listas de ids)
+│   ├── integracion-creative-ink.md ← plan y requerimientos para el agente de Creative-Ink (su §4 quedó reemplazada)
+│   ├── contrato-plantillas.md     ← contrato v1: manifiesto, catálogo, paquetes, bundle, ink-params, reglas V01–V52
+│   └── guia-nueva-plantilla.md    ← cómo escribir una plantilla (del bloque PERSONALIZACIÓN a parámetros, modos, motor)
+├── schema/                        ← JSON Schema draft-07 (ayuda al editor; la validación que manda es inkt)
+│   ├── template.schema.json       ← manifiesto (parámetros con reglas por tipo)
+│   ├── index.schema.json          ← índice del catálogo (define "ref": ruta relativa o https)
+│   ├── versions.schema.json       ← versiones publicadas de una plantilla
+│   └── pack.schema.json           ← paquete ("todo" reservado)
+├── packs/                         ← academico, presentaciones, correspondencia, congresos (todo se genera)
 ├── shared/                        ← ⏳ M3: componentes que se resuelven dentro de cada bundle
 │   ├── motor/ink-motor.tex        ← iftex: inputenc/fontenc (pdfLaTeX) o fontspec (Xe/LuaLaTeX)
 │   ├── base/ink-base.tex          ← carga de ink-params, \inkIfTrue, \inkItem
@@ -41,7 +42,13 @@ Memorandum-tex/
 │   ├── go.mod
 │   ├── cmd/inkt/                  ← CLI: validate, index, bundle, new, check, format, diff, clean
 │   └── pkg/{contract,params,compat,bundle,client}/ ← librería que importa Creative-Ink
-├── tests/fixtures/catalog/v1/     ← ⏳ M1: catálogo y bundles de prueba (incluye casos maliciosos)
+├── tests/fixtures/                ← datos de prueba del contrato (ver su README)
+│   ├── templates/prueba/          ← ok-minima (válida), futura (schemaVersion 99), con-paquetes (missing-packages)
+│   ├── packs/prueba.json
+│   ├── params/                    ← EscapeTeX, Resolve y salida exacta de ink-params.tex
+│   ├── invalid/                   ← manifests.json (V01–V20) y folders.json (V30–V38), generados al vuelo en los tests
+│   ├── bundles/cases.json         ← 14 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
+│   └── catalog/v1/                ← ⏳ M2: catálogo servible que genera inkt index
 └── .github/workflows/             ← ⏳ M7: validate.yml (3 SO) y release.yml (Pages + Releases)
 ```
 
@@ -69,18 +76,22 @@ Memorandum-tex/
 
 ## 3. Contrato (tabla viva)
 
-Mientras no exista `docs/contrato-plantillas.md` (⏳ M1), el detalle está en `docs/integracion-creative-ink.md` §4.
+La especificación completa es `docs/contrato-plantillas.md` (v1, 2026-11-10). Esta tabla es el resumen; si discrepan,
+gana el contrato.
 
-| Artefacto | Productor → consumidor | Forma y semántica | Fase |
-|-----------|------------------------|-------------------|------|
-| `template.json` | Autor de la plantilla → `inkt`, Creative-Ink | Manifiesto v1: `id` kebab-case, `version` semver, `build` (`engines`, `defaultEngine: pdflatex`, `bibliography: bibtex`, `shellEscape`), `requires`, `parameters` (`string`, `boolean`, `enum`, `date`, `list`), `modes`. Campos desconocidos se ignoran | M1 |
-| Manifiesto publicado | CI → Creative-Ink | El anterior + `dist {url, sha256, size, publishedAt}` en `catalog/v1/templates/<id>/<versión>/template.json` | M7 |
-| `index.json` | CI → Creative-Ink | Resumen ligero (≤ 1 MB) de plantillas y paquetes; rutas relativas a la URL del índice | M1 (fixture), M7 (real) |
-| `packs/<id>.json` | Repositorio → Creative-Ink | Lista de `{id, version?}`; sin zip propio. `todo` se genera al publicar | M1 |
-| Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Una carpeta raíz `<id>/`; autocontenido; sin `.latexmkrc`, enlaces, `..`, ocultos (salvo `.creative-ink-meta`) ni extensiones fuera de la lista; ≤ 2000 archivos y 200 MB | M2 |
-| `ink-params.tex` | Librería → plantilla | Un `\def\<macro>{valor}` por parámetro, escapado para TeX; se carga antes de los `\providecommand` | M1 |
-| Macros de modo | Creative-Ink → plantilla | `\borrador` y `\SoloCapitulo{<ruta>}` (nombres fijos, los usa `ci compile`) | M3 |
-| Librería Go | Este repo → Creative-Ink | `client.Index/Manifest/Get/GetPack`, `params.Resolve/RenderInkParams/EscapeTeX`, `compat.Evaluate`, `bundle.SafeExtract/VerifySHA256`; errores tipados | M2 |
+| Artefacto | Productor → consumidor | Forma y semántica | Contrato | Estado |
+|-----------|------------------------|-------------------|----------|--------|
+| `template.json` | Autor → `inkt`, Creative-Ink | `id` kebab-case = carpeta; `version` semver; `build` (`engines` con `pdflatex` y `xelatex`, `defaultEngine: pdflatex`, `bibliography: bibtex`, `shellEscape`); `requires`; `components`; `parameters` (`string`, `boolean`, `enum`, `date`, `list`); `modes` con `completo`. Campos desconocidos: aviso al validar, ignorados por los clientes | §3–§5 | Especificado, con esquema y fixtures |
+| Manifiesto publicado | CI → Creative-Ink | El del repositorio sin `$schema` ni `components`, más `dist {url, sha256, size, publishedAt}` | §6 | ⏳ M2 (generador), M7 (real) |
+| `versions.json` | CI → Creative-Ink | Versiones publicadas, más nueva primero; rutas relativas al archivo | §6 | ⏳ M2 |
+| `index.json` | CI → Creative-Ink | Última versión de cada plantilla y lista de paquetes; ≤ 1 MB; rutas relativas a la URL del índice | §7 | ⏳ M2 (fixture), M7 (real) |
+| `packs/<id>.json` | Repositorio → Creative-Ink | 1–100 `{id, version?}`; sin zip propio; `todo` reservado y generado | §8 | 4 paquetes escritos |
+| Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Reglas B1–B9: una raíz = id; segmentos `^[A-Za-z0-9._-]+$`; sin enlaces; lista de extensiones + `LICENSE` y `.creative-ink-meta`; ≤ 2000 archivos, 200 MB y 100:1; reproducible | §9 | 14 casos en fixtures; ⏳ M2 |
+| `.creative-ink-meta` del bundle | `inkt bundle` → Creative-Ink | Exactamente `{"version": 1, "mainFile": "<entry>"}` (`core.ProjectMeta` de Creative-Ink) | §9 B7 | Especificado |
+| `ink-params.tex` | Librería → plantilla | Dos líneas de cabecera y `\def\<macro>{valor}` en el orden del manifiesto; `EscapeTeX` igual a `core.EscapeTeX` | §10 | Salida exacta en fixtures |
+| Errores de parámetros | Librería → Creative-Ink | Códigos `unknown`, `required`, `type`, `enum`, `length`, `items`, por campo | §4.3 | 10 casos en fixtures |
+| Macros de modo | Creative-Ink → plantilla | `\borrador` y `\SoloCapitulo` (nombres fijos, los usa `ci compile`) | §5 | Especificado; ⏳ M3 en componentes |
+| Librería Go | Este repo → Creative-Ink | `client`, `params`, `compat`, `bundle`, `contract`; errores tipados de §13 | §13 | ⏳ M2 |
 
 ## 4. Subsistemas
 
@@ -137,12 +148,15 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 11. En Creative-Ink: catálogo en el **núcleo** y **catálogos de terceros** marcados como tales.
 
 ### Plan por fases
-- [ ] **M0 — Gobierno** (`DEV-feat-Contrato-Plantillas`): CLAUDE.md, MAP.md, CONTRIBUTING.md, README.md, `.gitattributes`,
-  `.gitignore`, `.editorconfig`, skills `latex-template-author` y `template-contract`.
-- [ ] **M1 — Contrato v1:** `docs/contrato-plantillas.md`, `schema/*.json`, `packs/*.json`, `tests/fixtures/catalog/v1/`,
-  `docs/guia-nueva-plantilla.md`.
+- [x] **M0 — Gobierno** (`DEV-feat-Contrato-Plantillas`, hecho el 2026-11-10, commits `f83dcf8`…`20852d6`): CLAUDE.md,
+  MAP.md, CONTRIBUTING.md, README.md, `.gitattributes`, `.gitignore`, `.editorconfig`, skills `latex-template-author` y
+  `template-contract`.
+- [ ] **M1 — Contrato v1:** `docs/contrato-plantillas.md`, `schema/*.json` (4), `packs/*.json` (4), `tests/fixtures/`
+  (fuentes y casos), `docs/guia-nueva-plantilla.md`. *Ajuste del 2026-11-10:* los zips y el catálogo de prueba no se
+  escriben a mano; los genera M2 con el mismo código que publica el catálogo real (reproducibles).
 - [ ] **M2 — Librería Go:** `tools/pkg/{contract,params,compat,bundle,client}` + `inkt validate|index|bundle`, con tests,
-  `-race` y `go vet` para darwin, linux y windows.
+  `-race` y `go vet` para darwin, linux y windows. Incluye el generador de `tests/fixtures/catalog/v1/` y los tests que
+  recorren todos los casos de `tests/fixtures/`.
 - [ ] **M3 — Componentes compartidos:** motor, base, paletas, comandos, institución UNAM-FES con logos.
 - [ ] **M4 — Piloto `ensayo`** de punta a punta (el humano lo compila con los tres motores).
 - [ ] **M5 — Migración del resto** (§5).

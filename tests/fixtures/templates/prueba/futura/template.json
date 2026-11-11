@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 99,
+  "id": "futura",
+  "version": "1.0.0",
+  "name": "Plantilla de un contrato futuro",
+  "description": "Fixture: schemaVersion desconocida. Los clientes la marcan incompatible sin romper el catálogo.",
+  "category": "prueba",
+  "language": "es-MX",
+  "license": "MIT",
+  "authors": [{ "name": "Memorandum-tex" }],
+  "entry": "main.tex",
+  "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "none" },
+  "modes": ["completo"],
+  "campoDelFuturo": { "descripcion": "Un cliente v1 debe ignorar este campo." }
+}

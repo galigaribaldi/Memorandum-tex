@@ -1,0 +1,36 @@
+{
+  "$schema": "../../../../../schema/template.schema.json",
+  "schemaVersion": 1,
+  "id": "ok-minima",
+  "version": "1.0.0",
+  "name": "Plantilla mínima de prueba",
+  "description": "Fixture del contrato v1: un parámetro de cada tipo y los cuatro modos.",
+  "category": "prueba",
+  "tags": ["prueba", "fixture"],
+  "language": "es-MX",
+  "license": "MIT",
+  "authors": [{ "name": "Memorandum-tex" }],
+  "entry": "main.tex",
+  "build": {
+    "engines": ["pdflatex", "xelatex", "lualatex"],
+    "defaultEngine": "pdflatex",
+    "bibliography": "none",
+    "shellEscape": false
+  },
+  "requires": {
+    "creativeInk": ">=0.1.0",
+    "texLive": 2023,
+    "packages": ["latex-bin", "iftex", "etoolbox", "graphics", "fontspec"],
+    "files": ["article.cls", "iftex.sty", "etoolbox.sty", "ifthen.sty", "graphicx.sty"]
+  },
+  "parameters": [
+    { "key": "titulo", "macro": "TituloDoc", "type": "string", "label": "Título", "required": true, "fromProjectName": true, "maxLength": 120 },
+    { "key": "autor", "macro": "Autor", "type": "string", "label": "Autor", "required": true },
+    { "key": "nota", "macro": "Nota", "type": "string", "label": "Nota opcional", "group": "Documento" },
+    { "key": "portada", "macro": "ConPortada", "type": "boolean", "label": "Con portada", "default": true },
+    { "key": "color", "macro": "ColorTema", "type": "enum", "label": "Paleta", "default": "Azul", "values": ["Azul", "Verde", "Gris"] },
+    { "key": "fecha", "macro": "FechaEntrega", "type": "date", "label": "Fecha de entrega", "default": "today" },
+    { "key": "comite", "macro": "ComiteTutor", "type": "list", "label": "Comité", "maxItems": 5, "default": [] }
+  ],
+  "modes": ["completo", "rapido", "borrador", "capitulo"]
+}

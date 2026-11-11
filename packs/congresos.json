@@ -1,0 +1,10 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "schemaVersion": 1,
+  "id": "congresos",
+  "name": "Congresos",
+  "description": "Formatos oficiales de congresos: resumen ISPRS.",
+  "templates": [
+    { "id": "isprs-abstract" }
+  ]
+}

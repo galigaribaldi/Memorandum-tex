@@ -73,11 +73,13 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 - **Límites de copia de Creative-Ink:** 2000 archivos y 200 MB por plantilla. Sin imágenes pesadas en `src/`.
 - **babel `spanish`** activa `<`, `>` y `~`; dentro de TikZ usa `\usetikzlibrary{babel}`, y en diffs, `\nobreakspace`.
 - **Logos:** archivos normales de git (sin LFS); un zip de GitHub con LFS trae punteros, no imágenes.
+- **Caracteres invisibles:** nunca escribas un BOM o un espacio de ancho cero literal (ni en fixtures): usa su escape
+  (`\ufeff` en JSON). El hook de marcas lo bloquea; corrígelo por bytes con `perl -CSD -i -pe 's/\x{FEFF}/\\ufeff/g'`.
 
 ## Estado actual
 | Fase | Qué | Estado |
 |------|-----|--------|
-| M0 | Gobierno: Tríada, CONTRIBUTING, README, `.gitattributes`, `.gitignore`, `.editorconfig`, skills | En curso (`DEV-feat-Contrato-Plantillas`) |
-| M1 | Contrato v1, esquemas JSON y fixtures | Pendiente |
+| M0 | Gobierno: Tríada, CONTRIBUTING, README, `.gitattributes`, `.gitignore`, `.editorconfig`, skills | Hecho (2026-11-10, `20852d6`) |
+| M1 | Contrato v1 (`docs/contrato-plantillas.md`), 4 esquemas, 4 paquetes, fixtures, guía técnica | En curso (`DEV-feat-Contrato-Plantillas`) |
 | M2 | Librería Go y `inkt validate` | Pendiente |
 | M3–M8 | Componentes, piloto `ensayo`, migración, tesis, publicación, identidad | Pendiente (MAP §4.8) |

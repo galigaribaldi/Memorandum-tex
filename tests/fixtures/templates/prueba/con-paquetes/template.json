@@ -1,0 +1,19 @@
+{
+  "$schema": "../../../../../schema/template.schema.json",
+  "schemaVersion": 1,
+  "id": "con-paquetes",
+  "version": "1.0.0",
+  "name": "Plantilla con un paquete inexistente",
+  "description": "Fixture: requires.files nombra un archivo que kpsewhich no encuentra, así que el estado es missing-packages.",
+  "category": "prueba",
+  "language": "es-MX",
+  "license": "MIT",
+  "authors": [{ "name": "Memorandum-tex" }],
+  "entry": "main.tex",
+  "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "none", "shellEscape": false },
+  "requires": {
+    "packages": ["memorandum-paquete-inexistente"],
+    "files": ["article.cls", "memorandum-paquete-inexistente.sty"]
+  },
+  "modes": ["completo"]
+}

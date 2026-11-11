@@ -1,0 +1,104 @@
+{
+  "description": "Manifiestos que inkt validate debe rechazar (o avisar), uno o más por regla de docs/contrato-plantillas.md §12. Cada caso parte de 'base' y aplica 'patch' como JSON Merge Patch (RFC 7386: los objetos se mezclan, las listas se reemplazan enteras, null borra el campo). 'raw' sustituye el archivo completo por esos bytes. 'level' es error o warning. V04, V17 (tamaño) y V18 necesitan la carpeta: el test valida el manifiesto dentro de una copia de ok-minima con un shared/ vacío.",
+  "base": "../templates/prueba/ok-minima/template.json",
+  "cases": [
+    { "code": "V01", "level": "error", "name": "no-es-objeto", "raw": "[1, 2, 3]" },
+    { "code": "V01", "level": "error", "name": "json-roto", "raw": "{\"schemaVersion\": 1," },
+    { "code": "V01", "level": "error", "name": "con-bom", "raw": "\ufeff{\"schemaVersion\": 1}" },
+    { "code": "V02", "level": "error", "name": "schema-version-2", "patch": { "schemaVersion": 2 } },
+    { "code": "V03", "level": "error", "name": "id-mayusculas", "patch": { "id": "Ok_Minima" } },
+    { "code": "V03", "level": "error", "name": "id-corto", "patch": { "id": "a" } },
+    { "code": "V04", "level": "error", "name": "id-distinto-de-carpeta", "patch": { "id": "otra-plantilla" } },
+    { "code": "V04", "level": "error", "name": "categoria-distinta-de-carpeta", "patch": { "category": "academico" } },
+    { "code": "V05", "level": "error", "name": "version-incompleta", "patch": { "version": "1.0" } },
+    { "code": "V05", "level": "error", "name": "version-prerelease", "patch": { "version": "1.0.0-beta" } },
+    { "code": "V06", "level": "error", "name": "nombre-vacio", "patch": { "name": "" } },
+    { "code": "V06", "level": "error", "name": "categoria-con-acento", "patch": { "category": "académico" } },
+    { "code": "V06", "level": "error", "name": "etiqueta-con-espacio", "patch": { "tags": ["mala etiqueta"] } },
+    { "code": "V07", "level": "error", "name": "idioma-no-espanol", "patch": { "language": "en-US" } },
+    { "code": "V07", "level": "error", "name": "idioma-mal-escrito", "patch": { "language": "spanish" } },
+    { "code": "V08", "level": "error", "name": "licencia-vacia", "patch": { "license": "" } },
+    { "code": "V08", "level": "error", "name": "sin-autores", "patch": { "authors": [] } },
+    { "code": "V09", "level": "error", "name": "entry-fuera", "patch": { "entry": "../fuera.tex" } },
+    { "code": "V09", "level": "error", "name": "entry-no-tex", "patch": { "entry": "main.txt" } },
+    { "code": "V09", "level": "error", "name": "entry-inexistente", "patch": { "entry": "no-existe.tex" } },
+    {
+      "code": "V10", "level": "error", "name": "sin-pdflatex",
+      "patch": { "build": { "engines": ["lualatex"], "defaultEngine": "lualatex", "bibliography": "none" } }
+    },
+    {
+      "code": "V10", "level": "error", "name": "motor-por-defecto-ajeno",
+      "patch": { "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "lualatex", "bibliography": "none" } }
+    },
+    {
+      "code": "V10", "level": "error", "name": "bibliografia-desconocida",
+      "patch": { "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "bibtex8" } }
+    },
+    { "code": "V11", "level": "error", "name": "creative-ink-con-caret", "patch": { "requires": { "creativeInk": "^1.0.0" } } },
+    {
+      "code": "V12", "level": "error", "name": "clave-repetida",
+      "patch": { "parameters": [
+        { "key": "titulo", "macro": "TituloDoc", "type": "string", "label": "Título" },
+        { "key": "titulo", "macro": "TituloOtro", "type": "string", "label": "Otro" }
+      ] }
+    },
+    {
+      "code": "V12", "level": "error", "name": "macro-reservada",
+      "patch": { "parameters": [{ "key": "titulo", "macro": "title", "type": "string", "label": "Título" }] }
+    },
+    {
+      "code": "V12", "level": "error", "name": "macro-prefijo-ink",
+      "patch": { "parameters": [{ "key": "color", "macro": "inkColor", "type": "enum", "label": "Color", "default": "A", "values": ["A"] }] }
+    },
+    {
+      "code": "V12", "level": "error", "name": "macro-con-digito",
+      "patch": { "parameters": [{ "key": "titulo", "macro": "Titulo2", "type": "string", "label": "Título" }] }
+    },
+    {
+      "code": "V13", "level": "error", "name": "tipo-desconocido",
+      "patch": { "parameters": [{ "key": "paginas", "macro": "Paginas", "type": "number", "label": "Páginas" }] }
+    },
+    {
+      "code": "V13", "level": "error", "name": "enum-valor-con-espacio",
+      "patch": { "parameters": [{ "key": "color", "macro": "ColorTema", "type": "enum", "label": "Color", "default": "Azul", "values": ["Azul", "Verde olivo"] }] }
+    },
+    {
+      "code": "V13", "level": "error", "name": "string-max-length-excesivo",
+      "patch": { "parameters": [{ "key": "titulo", "macro": "TituloDoc", "type": "string", "label": "Título", "maxLength": 5000 }] }
+    },
+    {
+      "code": "V14", "level": "error", "name": "booleano-sin-default",
+      "patch": { "parameters": [{ "key": "portada", "macro": "ConPortada", "type": "boolean", "label": "Portada" }] }
+    },
+    {
+      "code": "V14", "level": "error", "name": "enum-default-ajeno",
+      "patch": { "parameters": [{ "key": "color", "macro": "ColorTema", "type": "enum", "label": "Color", "default": "Rojo", "values": ["Azul", "Verde"] }] }
+    },
+    {
+      "code": "V14", "level": "error", "name": "fecha-default-mal-escrita",
+      "patch": { "parameters": [{ "key": "fecha", "macro": "FechaEntrega", "type": "date", "label": "Fecha", "default": "10/11/2026" }] }
+    },
+    {
+      "code": "V15", "level": "error", "name": "dos-from-project-name",
+      "patch": { "parameters": [
+        { "key": "titulo", "macro": "TituloDoc", "type": "string", "label": "Título", "fromProjectName": true },
+        { "key": "subtitulo", "macro": "Subtitulo", "type": "string", "label": "Subtítulo", "fromProjectName": true }
+      ] }
+    },
+    {
+      "code": "V15", "level": "error", "name": "from-project-name-en-lista",
+      "patch": { "parameters": [{ "key": "comite", "macro": "ComiteTutor", "type": "list", "label": "Comité", "fromProjectName": true }] }
+    },
+    { "code": "V16", "level": "error", "name": "sin-completo", "patch": { "modes": ["rapido"] } },
+    { "code": "V16", "level": "error", "name": "modo-repetido", "patch": { "modes": ["completo", "completo"] } },
+    { "code": "V16", "level": "error", "name": "modo-desconocido", "patch": { "modes": ["completo", "turbo"] } },
+    { "code": "V17", "level": "error", "name": "preview-no-png", "patch": { "preview": "preview.jpg" } },
+    { "code": "V17", "level": "error", "name": "preview-inexistente", "patch": { "preview": "preview.png" } },
+    { "code": "V18", "level": "error", "name": "componente-inexistente", "patch": { "components": ["no-existe"] } },
+    {
+      "code": "V19", "level": "error", "name": "dist-en-repositorio",
+      "patch": { "dist": { "url": "https://example.org/x.zip", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "size": 1 } }
+    },
+    { "code": "V20", "level": "warning", "name": "campo-desconocido", "patch": { "engine": "pdflatex" } }
+  ]
+}

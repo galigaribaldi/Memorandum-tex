@@ -1,0 +1,13 @@
+{
+  "$schema": "../schema/pack.schema.json",
+  "schemaVersion": 1,
+  "id": "academico",
+  "name": "Paquete académico",
+  "description": "Ensayo, artículo, registro de avances y tesis con su kit de seguimiento de cambios.",
+  "templates": [
+    { "id": "ensayo" },
+    { "id": "articulo" },
+    { "id": "registro-avances" },
+    { "id": "tesis" }
+  ]
+}

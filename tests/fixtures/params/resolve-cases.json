@@ -1,0 +1,120 @@
+{
+  "description": "Casos de params.Resolve y params.RenderInkParams sobre ok-minima (docs/contrato-plantillas.md §4.3 y §10). 'values' es lo que escribe el usuario (clave=valor); 'now' es la fecha local para 'today'. Los errores van en el orden del manifiesto y las claves desconocidas al final, ordenadas alfabéticamente.",
+  "manifest": "../templates/prueba/ok-minima/template.json",
+  "cases": [
+    {
+      "name": "todos-los-tipos",
+      "projectName": "Proyecto",
+      "now": "2026-11-10",
+      "values": {
+        "titulo": "Prueba & 100% {lista}",
+        "autor": "Ana_María ~ #1",
+        "portada": "no",
+        "color": "Verde",
+        "fecha": "2026-11-10",
+        "comite": "Dra. A; Dr. B ;;"
+      },
+      "expect": {
+        "values": {
+          "titulo": "Prueba & 100% {lista}",
+          "autor": "Ana_María ~ #1",
+          "portada": false,
+          "color": "Verde",
+          "fecha": "2026-11-10",
+          "comite": ["Dra. A", "Dr. B"]
+        },
+        "inkParams": "ok-minima.todos-los-tipos.ink-params.tex"
+      }
+    },
+    {
+      "name": "valores-por-defecto",
+      "projectName": "Mi tesis",
+      "now": "2026-11-10",
+      "values": { "autor": "X" },
+      "expect": {
+        "values": {
+          "titulo": "Mi tesis",
+          "autor": "X",
+          "portada": true,
+          "color": "Azul",
+          "fecha": "2026-11-10",
+          "comite": []
+        },
+        "inkParams": "ok-minima.valores-por-defecto.ink-params.tex"
+      }
+    },
+    {
+      "name": "booleano-alias",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": { "autor": "X", "portada": "Sí" },
+      "expect": {
+        "values": { "titulo": "P", "autor": "X", "portada": true, "color": "Azul", "fecha": "2026-11-10", "comite": [] }
+      }
+    },
+    {
+      "name": "clave-desconocida",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": { "autor": "X", "portda": "true", "Color": "Azul" },
+      "expect": { "errors": [{ "key": "Color", "code": "unknown" }, { "key": "portda", "code": "unknown" }] }
+    },
+    {
+      "name": "obligatorios",
+      "projectName": "",
+      "now": "2026-11-10",
+      "values": {},
+      "expect": { "errors": [{ "key": "titulo", "code": "required" }, { "key": "autor", "code": "required" }] }
+    },
+    {
+      "name": "tipos",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": { "autor": "X", "portada": "quizas", "fecha": "2026-02-30" },
+      "expect": { "errors": [{ "key": "portada", "code": "type" }, { "key": "fecha", "code": "type" }] }
+    },
+    {
+      "name": "enum-distingue-mayusculas",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": { "autor": "X", "color": "verde" },
+      "expect": { "errors": [{ "key": "color", "code": "enum" }] }
+    },
+    {
+      "name": "longitud",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": {
+        "titulo": "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+        "autor": "línea uno\nlínea dos"
+      },
+      "expect": { "errors": [{ "key": "titulo", "code": "length" }, { "key": "autor", "code": "length" }] }
+    },
+    {
+      "name": "longitud-en-caracteres",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": {
+        "titulo": "ññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññ",
+        "autor": "X"
+      },
+      "expect": {
+        "values": {
+          "titulo": "ññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññññ",
+          "autor": "X",
+          "portada": true,
+          "color": "Azul",
+          "fecha": "2026-11-10",
+          "comite": []
+        }
+      }
+    },
+    {
+      "name": "demasiados-elementos",
+      "projectName": "P",
+      "now": "2026-11-10",
+      "values": { "autor": "X", "comite": "a;b;c;d;e;f" },
+      "expect": { "errors": [{ "key": "comite", "code": "items" }] }
+    }
+  ]
+}

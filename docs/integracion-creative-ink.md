@@ -73,6 +73,12 @@ https://github.com/galigaribaldi/Memorandum-tex/releases/download/<id>-v<version
 
 ## 4. Contrato v1 (borrador)
 
+> **Reemplazado el 2026-11-10 por `docs/contrato-plantillas.md` (M1), que es ahora la fuente de verdad.** Esta
+> sección se conserva como contexto del análisis. Las diferencias están en §14 del contrato; las que más afectan a
+> Creative-Ink son: `.creative-ink-meta` lo genera el bundle con solo `version` y `mainFile`; hay `versions.json`;
+> los errores de parámetros tienen códigos estables (`unknown`, `required`, `type`, `enum`, `length`, `items`); y las
+> rutas del zip rechazan `C:` y `\` en todos los sistemas.
+
 ### 4.1 Manifiesto `template.json` (en el repositorio, por plantilla)
 
 ```json
@@ -320,8 +326,8 @@ results, err := c.GetPack(ctx, client.PackRequest{ID: "academico", DestRoot: abs
   - Verifica el `sha256` **antes** de extraer y respeta límites: índice ≤ 1 MB, manifiesto ≤ 256 KB, bundle ≤ 200 MB.
 - **Seguridad:** no ejecuta procesos ni sigue rutas peligrosas. Solo acepta HTTPS (HTTP solo con un flag explícito
   para tests con `httptest`).
-- **Errores tipados:** `ErrOffline`, `ErrNotFound`, `ErrChecksum`, `ErrUnsafePath`, `ErrTooLarge`,
-  `ErrUnsupportedSchema`, `ErrDestExists`, `*params.Error`.
+- **Errores tipados:** `ErrOffline`, `ErrNotFound`, `ErrChecksum`, `ErrUnsafePath`, `ErrForbiddenFile`,
+  `ErrBundleLayout`, `ErrTooLarge`, `ErrUnsupportedSchema`, `ErrDestExists`, `*params.Error` (contrato §13).
 - **Concurrencia:** es segura (`go test -race`); `GetPack` usa como mucho 3 descargas a la vez.
 - **Plataformas:** se verifica con `GOOS=windows`, `GOOS=linux` y `GOOS=darwin` (`go vet`).
 
@@ -405,22 +411,26 @@ Siguiendo el registro (`internal/ci/registry.go`), un solo comando `templates`:
 
 ## 10. Pruebas y fixtures (los entrega Memorandum-tex en M1)
 
+**Entregado en M1 (2026-11-10)**, descrito en `tests/fixtures/README.md`:
+
 ```
-tests/fixtures/catalog/v1/
-├── index.json                         ← 3 plantillas + 1 paquete
-├── templates/ok-minima/1.0.0/…        ← compatible, con parámetros de todos los tipos
-├── templates/futura/1.0.0/…           ← schemaVersion 99 → incompatible
-├── templates/con-paquetes/1.0.0/…     ← requires.files inexistente → missing-packages
+tests/fixtures/
+├── templates/prueba/{ok-minima, futura, con-paquetes}/  ← fuentes: lista, incompatible, missing-packages
 ├── packs/prueba.json
-└── bundles/
-    ├── ok-minima-1.0.0.zip            ← válido
-    ├── zip-slip.zip                   ← entrada "../../fuera.tex" → ErrUnsafePath
-    ├── con-latexmkrc.zip              ← → rechazado
-    └── checksum-malo.zip              ← sha256 distinto del índice → ErrChecksum
+├── params/{escape-cases.json, resolve-cases.json, ok-minima.*.ink-params.tex}
+├── invalid/{manifests.json, folders.json}               ← un caso por regla V01–V38
+└── bundles/cases.json                                   ← 14 zips: válido, checksum, zip slip, C:, \, enlace,
+                                                            .latexmkrc, script, dos raíces, sin meta, sin LICENSE,
+                                                            raíz distinta del id, bomba
 ```
 
-Con eso, Creative-Ink puede probar `ci templates …` de punta a punta con un `httptest.Server` que sirva esa
-carpeta, sin red y antes de que exista el catálogo real.
+- **Los zips no se guardan en git:** se construyen en los tests con fecha fija, así que el `sha256` es reproducible
+  en los tres sistemas.
+- **Catálogo servible (⏳ M2):** en M2, `inkt index` generará `tests/fixtures/catalog/v1/` con índice, manifiestos
+  publicados, `versions.json`, paquetes y zips. Con esa carpeta servida por un `httptest.Server`, Creative-Ink puede
+  probar `ci templates …` de punta a punta sin red.
+- **Ya utilizable:** `params/escape-cases.json` sirve desde hoy para un test de `core.EscapeTeX` en Creative-Ink. Sus
+  casos coinciden con su implementación actual (`repository.go`).
 
 ## 11. Plan coordinado
 
@@ -490,3 +500,10 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
 
 - **2026-11-10:** borrador v0, tras analizar Creative-Ink (`internal/core/templates.go`, `internal/ci/registry.go`,
   `docs/MAP.md` §1, §4.3.6 y §4.6) y las decisiones del programador.
+- **2026-11-10 (M1):**
+  - **Contrato:** contrato v1 en `docs/contrato-plantillas.md`, que reemplaza a §4.
+  - **Esquemas, paquetes y fixtures:** cuatro JSON Schema en `schema/`, cuatro paquetes en `packs/` y los fixtures
+    de §10.
+  - **Comprobado en Creative-Ink:** `.creative-ink-meta` (`ProjectMeta {version, mainFile, config}`) y
+    `core.EscapeTeX` (mismas 10 sustituciones, una sola pasada).
+  - **Errores:** se añaden `ErrForbiddenFile` y `ErrBundleLayout`.

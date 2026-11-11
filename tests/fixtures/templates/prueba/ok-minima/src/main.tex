@@ -1,0 +1,54 @@
+% !TeX program = pdflatex
+% ok-minima — fixture del contrato v1 (docs/contrato-plantillas.md §11).
+% Compila sin ink-params.tex, con pdfLaTeX, XeLaTeX y LuaLaTeX, y respeta los cuatro modos.
+\documentclass[12pt]{article}
+
+% 1. Parámetros: primero ink-params, después los valores por defecto.
+\InputIfFileExists{ink-params}{}{}
+\providecommand{\TituloDoc}{Plantilla mínima}
+\providecommand{\Autor}{Autoría de prueba}
+\providecommand{\Nota}{}
+\providecommand{\ConPortada}{true}
+\providecommand{\ColorTema}{Azul}
+\providecommand{\FechaEntrega}{2026-11-10}
+\providecommand{\ComiteTutor}{}
+\providecommand{\inkItem}[1]{\item #1}
+
+% 2. Motor (en las plantillas reales vive en Latex/ink/ink-motor.tex).
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+\else
+  \usepackage{fontspec}
+\fi
+
+% 3. Modos con nombre fijo (los inyecta ci compile de Creative-Ink).
+\ifdefined\borrador
+  \PassOptionsToPackage{draft}{graphicx}
+\fi
+\usepackage{graphicx}
+\ifdefined\SoloCapitulo
+  \includeonly{\SoloCapitulo}
+\fi
+
+\usepackage{ifthen}
+\usepackage{etoolbox}
+
+\title{\TituloDoc}
+\author{\Autor}
+\date{\FechaEntrega}
+
+\begin{document}
+\ifthenelse{\equal{\ConPortada}{true}}{\maketitle}{\noindent\textbf{\TituloDoc}\par}
+
+Paleta elegida: \ColorTema. \Nota
+
+\ifdefempty{\ComiteTutor}{}{%
+  \begin{itemize}
+    \ComiteTutor
+  \end{itemize}%
+}
+
+\include{secciones/introduccion}
+\end{document}
