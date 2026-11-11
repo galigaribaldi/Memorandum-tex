@@ -57,6 +57,13 @@ grep -n 'InputIfFileExists{ink-params}' <ruta>/src/main.tex           # debe apa
 Después, **el humano** compila: `latexmk -pdf main.tex` dentro de `src/`, y con `-xelatex` (y `-lualatex` si el
 manifiesto lo lista). Si no se pudo compilar, dilo en el informe.
 
+Al revisar sus resultados, cuenta errores y desbordes con `grep -a` (el `.log` no es UTF-8):
+```bash
+grep -acE '^!|Warning|Overfull|Underfull' <job>.log      # una plantilla terminada debe dar 0
+grep -anE -A3 '^!|Warning|Overfull|Underfull' <job>.log  # el detalle
+```
+Para conservar el registro de cada motor o modo, compila con `-jobname=<paso>` en lugar de `latexmk -C` entre pasos.
+
 ## Gotchas (verificados en el código de los repositorios de origen)
 - `_compile` del Makefile antiguo pasaba `\def\ColorTema{Institucional}` en cada compilación, por eso
   `\providecommand` en `color-config.tex` nunca ganaba. Con `ink-params` el orden lo arregla.
@@ -68,3 +75,7 @@ manifiesto lo lista). Si no se pudo compilar, dilo en el informe.
   recalcula ese espacio.
 - `% !TeX root = ../main.tex` en los archivos de `secciones/` es un comentario mágico para editores, no una ruta que
   cargue LaTeX: está permitido. V35 solo mira comandos fuera de comentarios.
+- **El `.log` de TeX no es UTF-8** (pdfTeX escribe ISO-8859): un `grep` sin `-a` lo trata como binario y cuenta 0
+  aunque haya errores. Ya pasó el 2026-11-11 y escondió un `Overfull \hbox` de 140 pt.
+- **`\verb` no se parte:** un comando largo dentro de un párrafo desborda la línea. Ponlo en su propia línea o en un
+  entorno `verbatim`.

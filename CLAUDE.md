@@ -71,6 +71,8 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 - **Creative-Ink confía en el `.latexmkrc` de las plantillas propias:** una plantilla descargada nunca debe traer uno
   (el validador lo rechaza).
 - **Límites de copia de Creative-Ink:** 2000 archivos y 200 MB por plantilla. Sin imágenes pesadas en `src/`.
+- **Los `.log` de TeX no son UTF-8** (pdfTeX escribe ISO-8859): revisa con `grep -a`, o un conteo de errores da 0
+  en falso. En Go, léelos como bytes, nunca con validación UTF-8.
 - **babel `spanish`** activa `<`, `>` y `~`; dentro de TikZ usa `\usetikzlibrary{babel}`, y en diffs, `\nobreakspace`.
 - **Logos:** archivos normales de git (sin LFS); un zip de GitHub con LFS trae punteros, no imágenes.
 - **Caracteres invisibles:** nunca escribas un BOM o un espacio de ancho cero literal (ni en fixtures): usa su escape

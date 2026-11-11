@@ -42,7 +42,10 @@
 \begin{document}
 \ifthenelse{\equal{\ConPortada}{true}}{\maketitle}{\noindent\textbf{\TituloDoc}\par}
 
-Paleta elegida: \ColorTema. \Nota
+% Cada parámetro se imprime siempre, con o sin portada, para que sus escapes lleguen a TeX.
+\noindent Autor: \Autor.\par
+\noindent Fecha de entrega: \FechaEntrega.\par
+\noindent Paleta elegida: \ColorTema. \Nota
 
 \ifdefempty{\ComiteTutor}{}{%
   \begin{itemize}
@@ -50,5 +53,7 @@ Paleta elegida: \ColorTema. \Nota
   \end{itemize}%
 }
 
+% Dos capítulos: con \SoloCapitulo{secciones/introduccion}, «Desarrollo» no debe aparecer.
 \include{secciones/introduccion}
+\include{secciones/desarrollo}
 \end{document}
