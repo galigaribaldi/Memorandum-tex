@@ -47,7 +47,7 @@ define la skill `template-contract` (y `docs/contrato-plantillas.md` cuando exis
 Mientras no exista `inkt validate` (M2), desde la raíz del repositorio y sustituyendo `<ruta>` por la carpeta de la
 plantilla:
 ```bash
-grep -rnE '\.\./|\\graphicspath\{[^}]*\.\.' <ruta>/src                # rutas que salen de la plantilla
+grep -rnE '^[^%]*\\(input|include|includegraphics|bibliography|graphicspath)[^%]*\.\./' <ruta>/src   # V35, sin comentarios
 grep -rnE '\\usepackage(\[[^]]*\])?\{(inputenc|fontenc|lipsum|subfigure|epsfig)\}' <ruta>/src
 grep -rn 'UNAM\|FES Acatl' <ruta>/src --include=*.tex                 # textos institucionales a mano
 find <ruta> -name '* *' -o -name '.latexmkrc' -o -name 'latexmkrc' -o -type l -o -name '*.sh' -o -name 'Makefile'
@@ -66,3 +66,5 @@ manifiesto lo lista). Si no se pudo compilar, dilo en el informe.
 - ISPRS trae `isprs.cls` oficial (licencia de terceros): no lo reescribas; documenta su origen en el README.
 - La infografía depende de `\vspace*{4.3cm}` para librar la cabecera dibujada con TikZ; si cambias la cabecera,
   recalcula ese espacio.
+- `% !TeX root = ../main.tex` en los archivos de `secciones/` es un comentario mágico para editores, no una ruta que
+  cargue LaTeX: está permitido. V35 solo mira comandos fuera de comentarios.
