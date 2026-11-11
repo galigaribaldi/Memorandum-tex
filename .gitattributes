@@ -1,0 +1,35 @@
+# Fin de línea LF en todos los sistemas (Windows incluido): las plantillas se comparan
+# por sha256 y un CRLF cambiaría el hash del bundle.
+* text=auto eol=lf
+
+# Fuentes de texto
+*.tex  text eol=lf
+*.sty  text eol=lf
+*.cls  text eol=lf
+*.bst  text eol=lf
+*.bib  text eol=lf
+*.bbx  text eol=lf
+*.cbx  text eol=lf
+*.lbx  text eol=lf
+*.cfg  text eol=lf
+*.def  text eol=lf
+*.md   text eol=lf
+*.txt  text eol=lf
+*.json text eol=lf
+*.go   text eol=lf
+*.mod  text eol=lf
+*.sum  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.svg  text eol=lf
+
+# Binarios: sin conversión ni diff de texto. Sin Git LFS a propósito (CLAUDE.md, Stack):
+# un zip o raw de GitHub con LFS entrega punteros en lugar de los archivos.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pdf  binary
+*.eps  binary
+*.zip  binary
+*.otf  binary
+*.ttf  binary

@@ -1,0 +1,58 @@
+# --- Auxiliares de LaTeX (compilaciones locales de prueba) ---
+*.aux
+*.auxlock
+*.bbl
+*.bbl-SAVE-ERROR
+*.bcf
+*.blg
+*.dpth
+*.fdb_latexmk
+*.fls
+*.glg
+*.glo
+*.gls
+*.idx
+*.ilg
+*.ind
+*.lof
+*.log
+*.lol
+*.lot
+*.md5
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex
+*.synctex.gz
+*.synctex(busy)
+*.toc
+*.vrb
+*.xdv
+*-blx.bib
+
+# PDF compilados dentro de una plantilla (no son fuentes). Los PDF que sí son
+# fuentes (logos, figuras) viven en carpetas permitidas: ver la excepción.
+templates/**/src/**/*.pdf
+!templates/**/src/**/img/**/*.pdf
+!templates/**/src/**/logos/**/*.pdf
+!templates/**/src/**/figuras/**/*.pdf
+
+# Parámetros generados por Creative-Ink al probar una plantilla en local
+ink-params.tex
+
+# --- Productos de la herramienta ---
+dist/
+tools/bin/
+tools/**/*.test
+tools/**/coverage.out
+
+# --- Sistema y editores ---
+.DS_Store
+**/.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+
+# --- Claude Code: ajustes personales (rutas absolutas de cada usuario) ---
+.claude/settings.local.json
