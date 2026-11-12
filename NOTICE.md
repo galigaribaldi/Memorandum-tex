@@ -6,7 +6,7 @@ Este repositorio usa dos licencias libres, según el tipo de contenido. Los text
 | Contenido | Licencia | Qué significa para ti |
 |-----------|----------|-----------------------|
 | Herramientas y librería Go (`tools/`), esquemas (`schema/`), documentación (`docs/`, `README.md`, `CONTRIBUTING.md`…), fixtures que no son plantillas | **MIT** (`LICENSE`, `LICENSES/MIT.txt`) | Puedes usarlos, modificarlos y redistribuirlos, incluso en software privativo, conservando el aviso de copyright y de licencia |
-| Plantillas (`templates/**/src/`), componentes compartidos (`shared/`, salvo los logos) y plantillas de prueba (`tests/fixtures/templates/**/src/`) | **MIT-0** (`LICENSES/MIT-0.txt`) | Igual que MIT, pero **sin obligación de conservar ningún aviso**: el documento que escribas con una plantilla (tesis, artículo, carta) es tuyo y no tiene que mencionar Memorandum-tex |
+| Plantillas (`templates/**/src/`), componentes compartidos (`shared/`, salvo los logos) y plantillas de prueba (`tools/fixtures/data/templates/**/src/`) | **MIT-0** (`LICENSES/MIT-0.txt`) | Igual que MIT, pero **sin obligación de conservar ningún aviso**: el documento que escribas con una plantilla (tesis, artículo, carta) es tuyo y no tiene que mencionar Memorandum-tex |
 
 ## Excluido de estas licencias
 

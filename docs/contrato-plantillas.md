@@ -169,7 +169,7 @@ opcional; entonces no se escribe en `ink-params.tex`).
 
 Orden de los errores: primero los de los parámetros, en el orden del manifiesto (uno por parámetro, el primero que
 falle); después las claves desconocidas, en orden por bytes (`Color` antes que `portda`). Casos en
-`tests/fixtures/params/resolve-cases.json`.
+`tools/fixtures/data/params/resolve-cases.json`.
 
 ### 4.4 Macros reservadas
 
@@ -325,7 +325,7 @@ byte a byte):
   manifiesto**, cada una terminada en LF. UTF-8 sin BOM.
 - **`EscapeTeX`** (idéntico a `core.EscapeTeX` de Creative-Ink, una sola pasada): `\` → `\textbackslash{}`, `{` → `\{`,
   `}` → `\}`, `$` → `\$`, `&` → `\&`, `#` → `\#`, `%` → `\%`, `_` → `\_`, `~` → `\textasciitilde{}`,
-  `^` → `\textasciicircum{}`. Casos compartidos en `tests/fixtures/params/escape-cases.json`.
+  `^` → `\textasciicircum{}`. Casos compartidos en `tools/fixtures/data/params/escape-cases.json`.
 - Se usa `\def` (no `\newcommand`) para que cargar el archivo dos veces no falle y para que los `\providecommand`
   posteriores no lo pisen.
 
@@ -345,8 +345,11 @@ byte a byte):
 
 ## 12. Reglas de validación de `inkt validate`
 
-Los códigos son estables: los usan los fixtures de `tests/fixtures/invalid/` (un archivo por regla, nombrado con su
+Los códigos son estables: los usan los fixtures de `tools/fixtures/data/invalid/` (un archivo por regla, nombrado con su
 código) y los mensajes de error.
+
+Cada error se reporta **una sola vez, en su regla**: un `id` que ya viola V03 no se compara además con la carpeta
+(V04), y una `schemaVersion` distinta de 1 detiene la validación en V02 (las demás reglas son de otro contrato).
 
 **Manifiesto**
 
@@ -364,14 +367,14 @@ código) y los mensajes de error.
 | V10 | `build` cumple §3.1, incluida la política de motores de este repositorio |
 | V11 | `requires` cumple §3.2 |
 | V12 | Parámetros: `key` y `macro` válidas y únicas; macro no reservada (§4.4) |
-| V13 | Parámetros: tipo conocido y campos propios del tipo válidos (§4.2) |
+| V13 | Parámetros: tipo conocido, `label`, `description` y `group` dentro de su longitud, y campos propios del tipo válidos (§4.2); como máximo 40 parámetros |
 | V14 | Parámetros: `default` válido para su tipo; `boolean` y `enum` lo llevan siempre |
 | V15 | `fromProjectName` solo en un parámetro, y de tipo `string` |
 | V16 | `modes` sin repetir, de §5, e incluye `completo` |
 | V17 | `preview`, si existe: PNG, 200 KB como máximo |
 | V18 | `components` existen en `shared/` |
 | V19 | Sin `dist` en el repositorio |
-| V20 | Campo desconocido en el nivel superior: **aviso** (posible errata) |
+| V20 | Campo desconocido en cualquier nivel (raíz, `build`, `requires`, `dist`, `authors[]`, `parameters[]`): **aviso** (posible errata como `defualt`) |
 
 **Contenido de la carpeta**
 

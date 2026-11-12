@@ -281,7 +281,7 @@ ensayo-1.0.0.zip
 | `pkg/compat` | `Evaluate(manifest, Env) → Report{Status, Missing, Hints}` | No: Creative-Ink le pasa `Env` | No |
 | `pkg/bundle` | `VerifySHA256`, `SafeExtract(zip, dst, Limits)` con la lista permitida de §4.5 | No | No |
 | `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get` (individual), `GetPack`; caché con ETag; resultado offline | No | Sí (HTTPS) |
-| `pkg/catalogtest` | Solo para tests: construye el catálogo de prueba de `tests/fixtures/` y lo sirve con `httptest.Server` | No | Solo local (`127.0.0.1`) |
+| `pkg/catalogtest` | Solo para tests: construye el catálogo de prueba de `tools/fixtures/data/` y lo sirve con `httptest.Server` | No | Solo local (`127.0.0.1`) |
 
 **API propuesta** (puede ajustarse en M2; la versión final se documenta en `docs/contrato-plantillas.md`):
 
@@ -297,8 +297,12 @@ idx, err := c.Index(ctx, client.IndexOptions{Refresh: false})
 // idx.Offline == true si se usó la caché por falta de red; idx.FetchedAt dice de cuándo es.
 
 m, err := c.Manifest(ctx, "ensayo", "")                 // "" = latest; solo JSON, sin bundle
-vals, err := params.Resolve(m, map[string]string{"portada": "false", "color": "Teal"})
-// err es *params.Error{Fields: []FieldError{Key, Reason}} si algo no es válido
+// IMPLEMENTADO (2026-11-11), firma real:
+values, err := params.ParseAssignments([]string{"portada=false", "color=Teal"}) // las palabras de la Terminal CI
+vals, err := params.Resolve(m, params.Input{Values: values, ProjectName: "Humedales", Now: time.Now()})
+// vals es *params.Resolved (en orden del manifiesto; vals.Map() da clave → string|bool|[]string)
+// err es *params.Error{Fields: []FieldError{Key, Code, Message}}; Code ∈ unknown|required|type|enum|length|items
+tex := params.RenderInkParams(vals) // []byte: el ink-params.tex exacto; params.FileName = "ink-params.tex"
 
 rep := compat.Evaluate(m, compat.Env{
     Engines:     map[string]bool{"pdflatex": true, "xelatex": true},
@@ -412,10 +416,10 @@ Siguiendo el registro (`internal/ci/registry.go`), un solo comando `templates`:
 
 ## 10. Pruebas y fixtures (los entrega Memorandum-tex en M1)
 
-**Entregado en M1 (2026-11-10)**, descrito en `tests/fixtures/README.md`:
+**Entregado en M1 (2026-11-10)**, descrito en `tools/fixtures/data/README.md`:
 
 ```
-tests/fixtures/
+tools/fixtures/data/
 ├── templates/prueba/{ok-minima, futura, con-paquetes}/  ← fuentes: lista, incompatible, missing-packages
 ├── packs/prueba.json
 ├── params/{escape-cases.json, resolve-cases.json, ok-minima.*.ink-params.tex}
@@ -520,3 +524,18 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
     imponen nada a los documentos del usuario.
   - **Fixture `ok-minima`:** compilado sin errores ni desbordes con pdfLaTeX, XeLaTeX y LuaLaTeX, con `ink-params.tex`
     y en los modos borrador y capítulo.
+- **2026-11-11 (M2, pasos 1 y 2), importante para Creative-Ink:**
+  - **Fixtures movidos:** de `tests/fixtures/` a **`tools/fixtures/data/`**. Así viajan con el módulo `tools` cuando
+    Creative-Ink lo importe, porque `go:embed` no admite `../`. El paquete
+    `github.com/galigaribaldi/Memorandum-tex/tools/fixtures` los expone con `fixtures.FS()` (un `fs.FS` raíz en
+    `data/`). Por ejemplo, `escape-cases.json` está en `fixtures.FS()` bajo `params/escape-cases.json`.
+  - **`pkg/contract` implementado:**
+    - **Tipos y errores:** los tipos del contrato y los errores compartidos `contract.Err*` (todos los paquetes
+      devuelven estos).
+    - **Validación:** `ValidateManifest(data, Options{Origin, RepoPolicy, Context})` devuelve un `Report` con
+      hallazgos `{Code, Level, Field, Message, Line}`, y `ValidatePack` hace lo mismo con los paquetes.
+    - **Para Creative-Ink:** valida los manifiestos publicados con `Origin: contract.OriginPublished` y **sin**
+      `RepoPolicy`, que es solo para este repositorio.
+  - **`pkg/params` implementado:** `ParseAssignments`, `Resolve`, `RenderInkParams` y `EscapeTeX` (firmas en §5).
+  - **Verificación:** 47 casos de manifiesto, 10 de resolución, 2 salidas exactas de `ink-params.tex` y 9 de
+    escapado; `go test -race` y `go vet` para darwin, linux y windows en verde.

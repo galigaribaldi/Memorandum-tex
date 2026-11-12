@@ -22,7 +22,7 @@ templates/academico/informe-tecnico/
     └── referencias.bib
 ```
 
-Partir de `tests/fixtures/templates/prueba/ok-minima/` es lo más rápido: es la plantilla válida más pequeña posible.
+Partir de `tools/fixtures/data/templates/prueba/ok-minima/` es lo más rápido: es la plantilla válida más pequeña posible.
 
 ## 2. Del bloque "PERSONALIZACIÓN" a parámetros
 

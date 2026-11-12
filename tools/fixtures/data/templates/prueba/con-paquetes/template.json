@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../../../schema/template.schema.json",
+  "$schema": "../../../../../../schema/template.schema.json",
   "schemaVersion": 1,
   "id": "con-paquetes",
   "version": "1.0.0",

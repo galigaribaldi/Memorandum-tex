@@ -1,6 +1,6 @@
 ---
 name: template-contract
-description: Contrato entre Memorandum-tex y Creative-Ink. Úsala para cualquier cambio en template.json, schema/*.json, packs/*.json, el índice del catálogo, el formato de los bundles, ink-params.tex, la librería Go (tools/pkg/contract, params, compat, bundle, client), los fixtures de tests/fixtures/ o docs/integracion-creative-ink.md.
+description: Contrato entre Memorandum-tex y Creative-Ink. Úsala para cualquier cambio en template.json, schema/*.json, packs/*.json, el índice del catálogo, el formato de los bundles, ink-params.tex, la librería Go (tools/pkg/contract, params, compat, bundle, client), los fixtures de tools/fixtures/data/ o docs/integracion-creative-ink.md.
 ---
 # Contrato de plantillas
 
@@ -41,7 +41,7 @@ cd tools && GOOS=windows go vet ./... && GOOS=linux go vet ./... && GOOS=darwin 
 cd tools && go run ./cmd/inkt validate ../templates                     # desde M2
 ```
 Los fixtures **no** se validan con `inkt validate`: `futura` viola V02 a propósito y los casos inválidos se construyen en
-tiempo de test (`tests/fixtures/README.md`). Los recorre `go test`.
+tiempo de test (`tools/fixtures/data/README.md`). Los recorre `go test`.
 `gofmt -l` debe salir vacío. Si algo no se pudo verificar (por ejemplo, la descarga real desde GitHub), dilo en el
 informe.
 

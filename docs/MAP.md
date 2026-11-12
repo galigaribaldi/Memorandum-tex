@@ -41,18 +41,21 @@ Memorandum-tex/
 │   ├── comandos/                  ← base, academico, revision, codigo
 │   └── instituciones/unam-fes-acatlan/ ← textos institucionales y logos
 ├── templates/                     ← ⏳ M4–M6: templates/<categoria>/<id>/{template.json,README.md,CHANGELOG.md,preview.png,src/}
-├── tools/                         ← ⏳ M2: módulo Go (solo biblioteca estándar)
+├── tools/                         ← módulo Go github.com/galigaribaldi/Memorandum-tex/tools (go 1.22, solo biblioteca estándar)
 │   ├── go.mod
-│   ├── cmd/inkt/                  ← CLI: validate, index, bundle, new, check, format, diff, clean
-│   └── pkg/{contract,params,compat,bundle,client}/ ← librería que importa Creative-Ink
-│       └── catalogtest/           ← catálogo de prueba servido con httptest (lo usan los tests de los dos repositorios)
-├── tests/fixtures/                ← datos de prueba del contrato (ver su README)
-│   ├── templates/prueba/          ← ok-minima (válida), futura (schemaVersion 99), con-paquetes (missing-packages)
-│   ├── packs/prueba.json
-│   ├── params/                    ← EscapeTeX, Resolve y salida exacta de ink-params.tex
-│   ├── invalid/                   ← manifests.json (V01–V20) y folders.json (V30–V38), generados al vuelo en los tests
-│   ├── bundles/cases.json         ← 14 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
-│   └── (sin catálogo generado: lo construye tools/pkg/catalogtest en cada test, decisión 12)
+│   ├── cmd/inkt/                  ← ⏳ M2: CLI validate, index, bundle (después: new, check, format, diff, clean)
+│   ├── fixtures/                  ← paquete Go que incrusta los datos de prueba (embed.FS): viajan con el módulo
+│   │   └── data/                  ← datos de prueba del contrato (ver su README)
+│   │       ├── templates/prueba/  ← ok-minima (válida), futura (schemaVersion 99), con-paquetes (missing-packages)
+│   │       ├── packs/prueba.json
+│   │       ├── params/            ← EscapeTeX, Resolve y salida exacta de ink-params.tex
+│   │       ├── invalid/           ← manifests.json (V01–V20) y folders.json (V30–V38), generados al vuelo en los tests
+│   │       └── bundles/cases.json ← 14 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
+│   ├── internal/fixturetest/      ← ayudas de test: carga de casos, JSON Merge Patch
+│   └── pkg/
+│       ├── contract/              ← tipos, errores compartidos y validación del manifiesto (V01–V20) y paquetes (V50–V51)
+│       ├── params/  compat/  bundle/  client/   ← ⏳ M2
+│       └── catalogtest/           ← ⏳ M2: catálogo de prueba servido con httptest (tests de los dos repositorios)
 └── .github/workflows/             ← ⏳ M7: validate.yml (3 SO) y release.yml (Pages + Releases)
 ```
 
@@ -154,10 +157,13 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 
 ### Decisiones del usuario (2026-11-11)
 12. **El catálogo de prueba es un paquete Go** (`tools/pkg/catalogtest`): construye en una carpeta temporal el índice,
-    los manifiestos publicados, los paquetes y los 14 zips de `tests/fixtures/`, y devuelve un `httptest.Server`. No se
+    los manifiestos publicados, los paquetes y los 14 zips de `tools/fixtures/data/`, y devuelve un `httptest.Server`. No se
     guardan zips ni catálogos generados en git; Creative-Ink lo llama desde sus tests.
 13. **La licencia se decide antes de la primera publicación (M7)**, porque B6 exige `LICENSE` en cada bundle. En M8
     queda solo la identidad (texto de muestra).
+    *Prerrequisito descubierto el 2026-11-11:* al importar el módulo `tools` con `go get`, Creative-Ink solo recibe lo
+    que está dentro de `tools/`, y `go:embed` no admite `../`. Por eso los fixtures se movieron de `tests/fixtures/` a
+    `tools/fixtures/data/` y el paquete `tools/fixtures` los incrusta con `embed.FS`.
 14. **Licencias: MIT + MIT-0** (convención REUSE, `NOTICE.md`):
     - **MIT-0:** plantillas y `shared/`, para que los documentos de los usuarios no tengan que conservar avisos.
     - **MIT:** herramientas, librería, esquemas y documentación; es compatible con cualquier licencia que elija
@@ -171,12 +177,18 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 - [x] **M0 — Gobierno** (`DEV-feat-Contrato-Plantillas`, hecho el 2026-11-10, commits `f83dcf8`…`20852d6`): CLAUDE.md,
   MAP.md, CONTRIBUTING.md, README.md, `.gitattributes`, `.gitignore`, `.editorconfig`, skills `latex-template-author` y
   `template-contract`.
-- [ ] **M1 — Contrato v1:** `docs/contrato-plantillas.md`, `schema/*.json` (4), `packs/*.json` (4), `tests/fixtures/`
+- [x] **M1 — Contrato v1** (hecho el 2026-11-11, commits `dba68f5`…`6513b66`): `docs/contrato-plantillas.md`, `schema/*.json` (4), `packs/*.json` (4), `tools/fixtures/data/`
   (fuentes y casos), `docs/guia-nueva-plantilla.md`. *Ajuste del 2026-11-10:* los zips y el catálogo de prueba no se
   escriben a mano; los genera M2 con el mismo código que publica el catálogo real (reproducibles).
 - [ ] **M2 — Librería Go:** `tools/pkg/{contract,params,compat,bundle,client}` + `inkt validate|index|bundle`, con tests,
   `-race` y `go vet` para darwin, linux y windows. Incluye `pkg/catalogtest` (decisión 12) y los tests que recorren
-  todos los casos de `tests/fixtures/`.
+  todos los casos de `tools/fixtures/data/`.
+  - [x] Paso 1 (2026-11-11): `go.mod` (`go 1.22`), `fixtures` (embed), `internal/fixturetest`, `pkg/contract` (tipos,
+    errores compartidos, V01–V20 con línea de cada hallazgo, V50–V52). 47/47 casos de manifiesto.
+  - [x] Paso 2 (2026-11-11): `pkg/params` (`ParseAssignments`, `Resolve`, `RenderInkParams`, `EscapeTeX`). 10/10 casos
+    de resolución, 2 salidas exactas de `ink-params.tex` y 9 de escapado.
+  - [ ] Paso 3: `pkg/compat`. · [ ] Paso 4: validación de carpeta (V30–V38). · [ ] Paso 5: `pkg/bundle`.
+  - [ ] Paso 6: `pkg/catalogtest` + `inkt index`. · [ ] Paso 7: `pkg/client`. · [ ] Paso 8: `cmd/inkt`.
 - [ ] **M3 — Componentes compartidos:** motor, base, paletas, comandos, institución UNAM-FES con logos.
 - [ ] **M4 — Piloto `ensayo`** de punta a punta (el humano lo compila con los tres motores).
 - [ ] **M5 — Migración del resto** (§5).

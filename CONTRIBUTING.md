@@ -67,7 +67,7 @@ solo.
 - [ ] README de la plantilla al día con sus parámetros y modos.
 - [ ] Compila sin errores con cada motor de `build.engines` (indica cuáles probaste y en qué sistema operativo).
 - [ ] `inkt validate` sin errores (⏳ M2).
-- [ ] Si cambiaste el contrato, `schema/`, `tests/fixtures/` y `docs/integracion-creative-ink.md` cambian en el mismo PR.
+- [ ] Si cambiaste el contrato, `schema/`, `tools/fixtures/data/` y `docs/integracion-creative-ink.md` cambian en el mismo PR.
 
 Al contribuir aceptas que tu aporte se publique con la licencia que corresponde a su tipo de contenido (MIT-0 para
 plantillas y `shared/`, MIT para lo demás); conservas el copyright de lo que escribas.

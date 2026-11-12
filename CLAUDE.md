@@ -23,7 +23,7 @@ Método de trabajo: `WORKFLOW_BLUEPRINT.md` (Tríada, contrato vivo, deuda como 
 | `packs/` | Definiciones de paquetes (listas de ids) |
 | `schema/` | JSON Schema del contrato |
 | `tools/` | Herramienta `inkt` y la librería que importa Creative-Ink (`pkg/contract`, `params`, `compat`, `bundle`, `client`) |
-| `tests/fixtures/` | Catálogo y bundles de prueba (incluye casos maliciosos) |
+| `tools/fixtures/` | Datos de prueba del contrato en `data/` (incluye casos maliciosos), incrustados con `embed.FS` para que viajen con el módulo |
 | `docs/` | MAP, contrato, integración con Creative-Ink, guías |
 
 ## Visión
@@ -84,6 +84,6 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 | Fase | Qué | Estado |
 |------|-----|--------|
 | M0 | Gobierno: Tríada, CONTRIBUTING, README, `.gitattributes`, `.gitignore`, `.editorconfig`, skills | Hecho (2026-11-10, `20852d6`) |
-| M1 | Contrato v1 (`docs/contrato-plantillas.md`), 4 esquemas, 4 paquetes, fixtures, guía técnica | En curso (`DEV-feat-Contrato-Plantillas`) |
-| M2 | Librería Go y `inkt validate` | Pendiente |
+| M1 | Contrato v1 (`docs/contrato-plantillas.md`), 4 esquemas, 4 paquetes, fixtures, guía técnica, licencias | Hecho (2026-11-11, `6513b66`) |
+| M2 | Librería Go y `inkt`: ✅ `contract`, ✅ `params`; siguen `compat`, validación de carpeta, `bundle`, `catalogtest`, `client`, `cmd/inkt` | En curso (`DEV-feat-Contrato-Plantillas`) |
 | M3–M8 | Componentes, piloto `ensayo`, migración, tesis, publicación, identidad | Pendiente (MAP §4.8) |

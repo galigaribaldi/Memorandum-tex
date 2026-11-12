@@ -4,7 +4,7 @@ Datos de prueba de `docs/contrato-plantillas.md`. Los usan los tests de `tools/`
 de Creative-Ink. **No necesitan red.**
 
 ```
-tests/fixtures/
+tools/fixtures/data/
 ├── templates/prueba/
 │   ├── ok-minima/        ← plantilla válida: un parámetro de cada tipo y los cuatro modos (caso base)
 │   ├── futura/           ← schemaVersion 99 + campo desconocido → incompatible (viola V02 a propósito)
