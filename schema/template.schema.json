@@ -58,7 +58,11 @@
         },
         "defaultEngine": { "$ref": "#/definitions/engine" },
         "bibliography": { "enum": ["none", "bibtex", "biber"], "default": "bibtex" },
-        "shellEscape": { "type": "boolean", "default": false }
+        "shellEscape": {
+          "const": false,
+          "default": false,
+          "description": "En v1 debe ser false: --shell-escape permite que un .tex ejecute comandos del sistema y los clientes bloquean la plantilla (contrato §3.1)."
+        }
       },
       "additionalProperties": false
     },

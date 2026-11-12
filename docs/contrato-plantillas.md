@@ -108,7 +108,7 @@ Vive en `templates/<categoria>/<id>/template.json`.
 | `engines` | string[] | No vacío, sin repetir, de `pdflatex`, `xelatex`, `lualatex`. **Política de este repositorio:** incluye `pdflatex` y `xelatex` (Creative-Ink compila hoy siempre con XeLaTeX) |
 | `defaultEngine` | string | Pertenece a `engines`. **Política de este repositorio:** `pdflatex` |
 | `bibliography` | string | `none`, `bibtex` o `biber`. Por defecto, `bibtex` (natbib/apalike). Si la plantilla ofrece Biber, lo hace con un parámetro `enum` `bibliografia` y aquí declara el valor por defecto |
-| `shellEscape` | boolean | Por defecto `false`. `true` obliga a que Creative-Ink trate la plantilla como **que requiere confianza** |
+| `shellEscape` | boolean | Por defecto `false`. **En v1, `true` está prohibido en este repositorio (V10) y los clientes bloquean la plantilla** (estado `blocked`): `--shell-escape` permite que un `.tex` ejecute comandos del sistema. No basta con "requerir confianza", porque en Creative-Ink una carpeta sin `.latexmkrc` ya cuenta como de confianza (revisión de seguridad del 2026-11-11). El campo se conserva para una versión futura del contrato |
 
 ### 3.2 `requires`
 
@@ -261,6 +261,34 @@ Al publicar, `inkt index` escribe `catalog/v1/templates/<id>/<versión>/template
 - `source.id` sigue la regla de §2 e identifica el catálogo (los de terceros usan el suyo).
 - Tamaño máximo que acepta la librería: 1 MB.
 
+### 7.1 Firma del catálogo (decisión del 2026-11-11)
+
+El `sha256` de `dist` protege contra un zip corrupto, pero no contra un catálogo comprometido: quien controle el sitio
+podría publicar un zip malicioso con su hash correcto. Por eso **cada JSON del catálogo se firma**: `index.json`,
+cada `versions.json`, cada manifiesto publicado y cada paquete. La firma va en un archivo hermano `<archivo>.sig`:
+
+```json
+{ "keyId": "memorandum-tex-2026", "algorithm": "ed25519", "signature": "<64 bytes en base64 estándar>" }
+```
+
+- **Qué se firma:** los bytes exactos del archivo, sin normalizar. Ed25519 está en la biblioteca estándar de Go
+  (`crypto/ed25519`).
+- **Por qué todos los JSON y no solo el índice:** el índice describe solo la última versión. Firmar también
+  `versions.json` y los manifiestos antiguos impide servir una versión vieja con un zip falso. Los zips quedan cubiertos
+  porque su `sha256` va dentro de un JSON firmado. Las miniaturas (`preview.png`) no se firman: solo se muestran, y la
+  librería limita su tamaño.
+- **Catálogo oficial:**
+  - **Siempre firmado.** La librería lleva fija la clave pública (o las claves, por `keyId`) y **rechaza** cualquier
+    JSON oficial sin firma válida (`ErrSignature`).
+  - **Custodia de la clave privada:** vive solo en un secreto de GitHub Actions. La genera y la custodia el humano;
+    nunca entra al repositorio.
+- **Catálogos de terceros:** si su fuente declara una clave pública, la firma es obligatoria igual que en el oficial.
+  Si no, se aceptan como **"de terceros, sin firma"** y los clientes lo muestran así.
+- **Rotación:**
+  1. Se publica una versión de la librería que ya conoce la clave nueva.
+  2. Después se empieza a firmar con ella.
+  3. La clave vieja se retira cuando ya no haya clientes que la necesiten.
+
 ## 8. Paquetes
 
 En el repositorio: `packs/<id>.json`. Publicado: `catalog/v1/packs/<id>.json` (mismo contenido).
@@ -299,12 +327,13 @@ ensayo-1.0.0.zip
 | B1 | Una sola carpeta raíz, igual al `id` del manifiesto que contiene |
 | B2 | Cada entrada, sin la carpeta raíz, es una ruta local con `/` como separador: sin `/` inicial, sin `.` ni `..` como segmento, y **cada segmento cumple `^[A-Za-z0-9._-]+$`** (como V31). Así `C:` y `\` se rechazan en cualquier sistema, no solo en Windows. Además se comprueba `filepath.IsLocal` sobre la ruta convertida al sistema |
 | B3 | Sin enlaces simbólicos ni entradas que no sean archivos o carpetas normales |
-| B4 | Archivos permitidos: extensiones `tex sty cls bst bib bbx cbx lbx cfg def md txt json png jpg jpeg pdf eps svg otf ttf` y los nombres exactos `LICENSE` y `.creative-ink-meta`. Cualquier otro (incluidos `.latexmkrc`, `latexmkrc`, `Makefile` y `*.sh`) se rechaza |
+| B4 | Archivos permitidos: extensiones `tex sty cls bst bib bbx cbx lbx cfg def md txt json png jpg jpeg pdf eps svg otf ttf` (en minúsculas) y los nombres exactos `LICENSE` y `.creative-ink-meta`. Cualquier otro (incluidos `.latexmkrc`, `latexmkrc`, `Makefile` y `*.sh`) se rechaza. Los nombres de rc de latexmk se rechazan **sin distinguir mayúsculas** (`.LATEXMKRC` es el mismo archivo en macOS y Windows) |
 | B5 | Como máximo 2000 archivos y 200 MB descomprimidos; ningún archivo con una relación de compresión mayor que 100:1 (bomba zip) |
 | B6 | Contiene `template.json`, `LICENSE`, `README.md`, `.creative-ink-meta` y el `entry`. `template.json` coincide en `id` y `version` con el índice. `LICENSE` lo genera `inkt bundle`: los textos de `LICENSES/<identificador>.txt` de cada identificador de `license`, en el orden de la expresión, separados por una línea en blanco |
 | B7 | `.creative-ink-meta` tiene exactamente `version: 1` y `mainFile` igual al `entry`. La configuración del proyecto (motor, etc.) la escribe Creative-Ink, no el bundle |
 | B8 | Reproducible: entradas ordenadas por ruta, fecha fija `2000-01-01T00:00:00Z`, método Deflate. Mismo contenido → mismo `sha256` en cualquier sistema |
 | B9 | El `sha256` se verifica sobre el zip completo **antes** de extraer |
+| B10 | Ningún par de entradas difiere solo en mayúsculas (`a.tex` y `A.tex`): en macOS y Windows una sobrescribiría a la otra al extraer. Se rechaza como ruta insegura |
 
 ## 10. `ink-params.tex`
 
@@ -341,7 +370,9 @@ byte a byte):
 3. Compila con cada motor de `build.engines` (el motor se elige en `Latex/ink/ink-motor.tex` con iftex).
 4. Respeta los modos que declara (§5).
 5. Ninguna ruta sale de la carpeta (`\input`, `\include`, `\includegraphics`, `\graphicspath`, `\bibliography`).
-6. Sin `--shell-escape` salvo `build.shellEscape: true`.
+6. Sin `--shell-escape` ni nada que lo necesite (externalización de TikZ, `minted`, `\write18`): en v1 está bloqueado.
+7. Sin los marcadores `{{TITULO}}` ni `{{TITLE}}`: Creative-Ink los sustituye al copiar sus plantillas propias y se
+   mezclaría con los parámetros (el título se escaparía dos veces). El título es un parámetro con `fromProjectName`.
 
 ## 12. Reglas de validación de `inkt validate`
 
@@ -364,7 +395,7 @@ Cada error se reporta **una sola vez, en su regla**: un `id` que ya viola V03 no
 | V07 | `language` cumple §3 (y es `es`/`es-XX` en este repositorio) |
 | V08 | `license` es una expresión SPDX con `AND`, cada identificador existe en `LICENSES/` y, en este repositorio, incluye `MIT-0`; `authors` con al menos un `name` |
 | V09 | `entry` relativo, `.tex` y existente en `src/` |
-| V10 | `build` cumple §3.1, incluida la política de motores de este repositorio |
+| V10 | `build` cumple §3.1, incluida la política de motores de este repositorio y `shellEscape` distinto de `true` |
 | V11 | `requires` cumple §3.2 |
 | V12 | Parámetros: `key` y `macro` válidas y únicas; macro no reservada (§4.4) |
 | V13 | Parámetros: tipo conocido, `label`, `description` y `group` dentro de su longitud, y campos propios del tipo válidos (§4.2); como máximo 40 parámetros |
@@ -381,7 +412,7 @@ Cada error se reporta **una sola vez, en su regla**: un `id` que ya viola V03 no
 | Código | Regla |
 |--------|-------|
 | V30 | Existen `README.md`, `CHANGELOG.md` (con un encabezado `## <version>`) y `src/` |
-| V31 | Nombres de archivo y carpeta en `src/`: `^[A-Za-z0-9._-]+$` por segmento |
+| V31 | Nombres de archivo y carpeta en `src/`: `^[A-Za-z0-9._-]+$` por segmento, y sin dos rutas que difieran solo en mayúsculas (B10) |
 | V32 | Archivos de `src/` permitidos por B4 (sin `LICENSE` ni `.creative-ink-meta`: los añade `inkt bundle`) |
 | V33 | Sin enlaces simbólicos |
 | V34 | Límites de B5 (contando los componentes resueltos) |
@@ -389,6 +420,7 @@ Cada error se reporta **una sola vez, en su regla**: un `id` que ya viola V03 no
 | V36 | `\InputIfFileExists{ink-params}` aparece en el `entry` antes del primer `\providecommand` de una macro de parámetro |
 | V37 | Cada macro de parámetro tiene un `\providecommand{\<macro>}` en `src/` |
 | V38 | Archivos de texto en UTF-8 válido, sin BOM y con LF |
+| V39 | Sin `--shell-escape` ni sus usos (`\usetikzlibrary{external}`, `\tikzexternalize`, `minted`, `\write18`, `\ShellEscape`) y sin los marcadores `{{TITULO}}`/`{{TITLE}}` en `src/` (§11, reglas 6 y 7) |
 
 **Paquetes**
 
@@ -413,6 +445,7 @@ Tipados, comparables con `errors.Is` o `errors.As`:
 | `ErrForbiddenFile` | Una entrada del zip viola B4 |
 | `ErrBundleLayout` | Se viola B1, B6 o B7 |
 | `ErrDestExists` | El destino existe y no está vacío |
+| `ErrSignature` | Un JSON de un catálogo firmado no tiene `.sig`, la firma no es válida o su `keyId` es desconocido (§7.1) |
 | `*params.Error` | Errores por campo de §4.3 |
 
 ## 14. Cambios respecto al borrador v0 (`docs/integracion-creative-ink.md` §4)
@@ -431,3 +464,9 @@ Tipados, comparables con `errors.Is` o `errors.As`:
   - `license` es una expresión SPDX con `AND`, resuelta contra `LICENSES/`.
   - El `LICENSE` del bundle lo genera `inkt bundle` (B6).
   - En este repositorio las plantillas son `MIT-0` y el resto es `MIT` (`NOTICE.md`).
+- (2026-11-11) Revisión de seguridad del agente de Creative-Ink:
+  - **`shellEscape: true`:** bloqueado en v1 (antes "requiere confianza", que en Creative-Ink no protege), con la
+    nueva regla V39.
+  - **Rutas:** se rechazan las que colisionan por mayúsculas (B10) y los rc de latexmk sin distinguir mayúsculas (B4).
+  - **Marcadores:** prohibidos `{{TITULO}}` y `{{TITLE}}`.
+  - **Firma:** firma Ed25519 de cada JSON del catálogo (§7.1) y el error nuevo `ErrSignature`.

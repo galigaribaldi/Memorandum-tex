@@ -46,6 +46,13 @@ dist/
 tools/bin/
 tools/**/*.test
 tools/**/coverage.out
+# Espacio de trabajo local de Go (enlaza módulos de otros repositorios): nunca se sube
+go.work
+go.work.sum
+
+# --- Claves de firma del catálogo: la privada vive SOLO en un secreto de GitHub Actions ---
+*.key
+*.ed25519
 
 # --- Sistema y editores ---
 .DS_Store

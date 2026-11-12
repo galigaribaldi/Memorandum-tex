@@ -71,7 +71,10 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 - **`ink-params.tex` se carga antes de los valores por defecto** (`\InputIfFileExists{ink-params}{}{}` y después
   `\providecommand`). Al revés, el parámetro nunca gana. Este es el origen del bug del `COLOR` en el Makefile antiguo.
 - **Creative-Ink confía en el `.latexmkrc` de las plantillas propias:** una plantilla descargada nunca debe traer uno
-  (el validador lo rechaza).
+  (el validador lo rechaza, también como `.LATEXMKRC`).
+- **`--shell-escape` está prohibido en v1** (MAP decisión 15). "Requiere confianza" no protege: en Creative-Ink una
+  carpeta sin `.latexmkrc` ya es de confianza. Nada de externalización de TikZ, `minted` ni `\write18`.
+- **Nombres que solo difieren en mayúsculas** (`a.tex` y `A.tex`) se sobrescriben en macOS y Windows: se rechazan.
 - **Límites de copia de Creative-Ink:** 2000 archivos y 200 MB por plantilla. Sin imágenes pesadas en `src/`.
 - **Los `.log` de TeX no son UTF-8** (pdfTeX escribe ISO-8859): revisa con `grep -a`, o un conteo de errores da 0
   en falso. En Go, léelos como bytes, nunca con validación UTF-8.
@@ -85,5 +88,5 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 |------|-----|--------|
 | M0 | Gobierno: Tríada, CONTRIBUTING, README, `.gitattributes`, `.gitignore`, `.editorconfig`, skills | Hecho (2026-11-10, `20852d6`) |
 | M1 | Contrato v1 (`docs/contrato-plantillas.md`), 4 esquemas, 4 paquetes, fixtures, guía técnica, licencias | Hecho (2026-11-11, `6513b66`) |
-| M2 | Librería Go y `inkt`: ✅ `contract`, ✅ `params`; siguen `compat`, validación de carpeta, `bundle`, `catalogtest`, `client`, `cmd/inkt` | En curso (`DEV-feat-Contrato-Plantillas`) |
+| M2 | Librería Go y `inkt`: ✅ `contract`, ✅ `params`, ✅ `compat`; siguen validación de carpeta, `bundle`, `catalogtest` (con firma), `client` (verifica firma), `cmd/inkt` | En curso (`DEV-feat-Contrato-Plantillas`) |
 | M3–M8 | Componentes, piloto `ensayo`, migración, tesis, publicación, identidad | Pendiente (MAP §4.8) |

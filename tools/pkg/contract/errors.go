@@ -24,4 +24,7 @@ var (
 	ErrBundleLayout = errors.New("estructura de bundle inválida")
 	// ErrDestExists: the destination exists and is not empty.
 	ErrDestExists = errors.New("el destino ya existe y no está vacío")
+	// ErrSignature: a JSON of a signed catalog has no .sig, an invalid
+	// signature or an unknown keyId (§7.1).
+	ErrSignature = errors.New("firma del catálogo ausente o inválida")
 )

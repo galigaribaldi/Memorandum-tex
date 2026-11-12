@@ -384,6 +384,10 @@ func (v *manifestValidator) build() {
 		if b.DefaultEngine != EnginePDFLaTeX && slices.Contains(b.Engines, b.DefaultEngine) {
 			r.errorf("V10", "build.defaultEngine", "el motor por defecto de este repositorio es pdflatex")
 		}
+		// Third-party catalogs are not rejected here: compat blocks them.
+		if b.ShellEscape {
+			r.errorf("V10", "build.shellEscape", "prohibido en v1: --shell-escape permite ejecutar comandos del sistema")
+		}
 	}
 }
 

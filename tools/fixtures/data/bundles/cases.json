@@ -54,6 +54,19 @@
       "expect": "ErrForbiddenFile"
     },
     {
+      "name": "con-latexmkrc-mayusculas.zip", "from": "../templates/prueba/ok-minima",
+      "entries": [{ "path": "ok-minima/.LATEXMKRC", "content": "$pdf_mode = 1;\n" }],
+      "expect": "ErrForbiddenFile"
+    },
+    {
+      "name": "colision-mayusculas.zip",
+      "entries": [
+        { "path": "colision-mayusculas/main.tex", "content": "% x\n" },
+        { "path": "colision-mayusculas/Main.tex", "content": "% sobrescribe main.tex en macOS y Windows\n" }
+      ],
+      "expect": "ErrUnsafePath"
+    },
+    {
       "name": "con-script.zip", "from": "../templates/prueba/ok-minima",
       "entries": [{ "path": "ok-minima/compilar.sh", "content": "#!/bin/sh\necho hola\n" }],
       "expect": "ErrForbiddenFile"

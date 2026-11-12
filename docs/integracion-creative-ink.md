@@ -254,8 +254,12 @@ ensayo-1.0.0.zip
 - **Motor:** `Latex/ink/ink-motor.tex` (con iftex) carga `inputenc`/`fontenc` en pdfLaTeX y `fontspec` en
   XeLaTeX o LuaLaTeX. Por eso las plantillas **también compilan con el `latexmk -xelatex` fijo** que Creative-Ink
   tiene hoy, mientras llega `compile.engine`.
-- **Sin `--shell-escape`** salvo que `build.shellEscape` sea `true`, que lo marca como "requiere confianza". En v1
-  ninguna plantilla lo pide; la externalización de TikZ de la tesis queda apagada por defecto.
+- **Sin `--shell-escape`, nunca, en v1** (corregido el 2026-11-11 tras la revisión de seguridad de Creative-Ink).
+  - **Qué decía antes:** que `shellEscape: true` marcaba la plantilla como "requiere confianza".
+  - **Por qué no protege:** en Creative-Ink una carpeta sin `.latexmkrc` ya cuenta como de confianza, así que esa
+    regla habría permitido ejecutar comandos desde un `.tex` descargado.
+  - **Regla actual:** los clientes **bloquean** cualquier plantilla con `shellEscape: true` (estado `blocked`) y el
+    validador de este repositorio la rechaza. La externalización de TikZ de la tesis sale del plan.
 - Nombres de archivo en ASCII, kebab-case, sin espacios; fin de línea LF; UTF-8.
 
 ### 4.8 Versionado del contrato
@@ -271,8 +275,12 @@ ensayo-1.0.0.zip
 - **Solo biblioteca estándar**, para que Creative-Ink no herede dependencias.
 - **Versión de Go:** `go` ≤ 1.26, la que usa Creative-Ink.
 - **Versionado:** tags `tools/vX.Y.Z`, que crea el programador.
-- **Desarrollo local:** `replace github.com/galigaribaldi/Memorandum-tex/tools => ../../Memorandum-tex/tools` en
-  el `go.mod` de Creative-Ink. Los dos repositorios están en `Personal_Documents/`.
+- **Desarrollo local:** un **`go.work` local, sin commit** (corregido el 2026-11-11; un `replace` subido al `go.mod`
+  rompería la compilación en otras máquinas).
+  - **Comando:** desde `Creative-Ink/creative-ink/`, el programador ejecuta
+    `go work init . ../../Memorandum-tex/tools`.
+  - **Git:** `go.work` y `go.work.sum` van al `.gitignore` de Creative-Ink.
+  - **Al publicar:** en el `go.mod` queda solo `require github.com/galigaribaldi/Memorandum-tex/tools vX.Y.Z`.
 
 | Paquete | Responsabilidad | Ejecuta procesos | Usa la red |
 |---------|-----------------|------------------|------------|
@@ -304,11 +312,17 @@ vals, err := params.Resolve(m, params.Input{Values: values, ProjectName: "Humeda
 // err es *params.Error{Fields: []FieldError{Key, Code, Message}}; Code ∈ unknown|required|type|enum|length|items
 tex := params.RenderInkParams(vals) // []byte: el ink-params.tex exacto; params.FileName = "ink-params.tex"
 
+// IMPLEMENTADO (2026-11-11), firma real:
 rep := compat.Evaluate(m, compat.Env{
-    Engines:     map[string]bool{"pdflatex": true, "xelatex": true},
+    Engines:     map[string]bool{"pdflatex": true, "xelatex": true}, // nil = no comprobar
     HasFiles:    func(names []string) map[string]bool { /* Creative-Ink: una llamada a kpsewhich */ },
-    InkVersion:  "0.3.0",
+    InkVersion:  "0.3.0",                                            // "" = no comprobar
 })
+// rep = compat.Report{Status, Reasons, MissingEngines, MissingFiles, Hints}
+// Status ∈ incompatible | blocked | missing-engine | missing-packages | ready (gana el más grave)
+// Hints son comandos que ejecuta el USUARIO ("tlmgr install …"); nunca se ejecutan solos
+rep, m := compat.EvaluateJSON(publishedManifestJSON, env) // valida (OriginPublished) y evalúa; inválido = incompatible
+compat.UpdateAvailable("1.0.0", "1.1.0")                   // true
 
 res, err := c.Get(ctx, client.GetRequest{
     ID: "ensayo", Version: "",          // individual
@@ -350,7 +364,7 @@ results, err := c.GetPack(ctx, client.PackRequest{ID: "academico", DestRoot: abs
 | RQ-6 | Mostrar **qué puede usar este equipo** | Estados de §7, con lo que falta y el comando exacto (que ejecuta el usuario) |
 | RQ-7 | Ver y aplicar actualizaciones de lo descargado | Nunca modifica proyectos ya creados |
 | RQ-8 | Funcionar sin conexión | `list`/`info` con la caché y su fecha; `get` falla con `ErrOffline` como resultado claro |
-| RQ-9 | Varias fuentes de catálogo | Clave `templates.sources` (lista de URLs de índice). La oficial viene por defecto; las demás se marcan como "terceros" (decisión del 2026-11-10) |
+| RQ-9 | Varias fuentes de catálogo | Clave `templates.sources` (lista de `{url, publicKey?}`). La oficial viene fija en el código y siempre firmada; las demás se marcan como "terceros" y, sin clave, como "sin firma" (decisiones del 2026-11-10 y 2026-11-11). **Solo en la capa del usuario:** si se pudiera escribir en la del proyecto, un proyecto clonado podría añadir un catálogo malicioso |
 | RQ-10 | Motor del proyecto según el manifiesto | `compile.engine` en la capa del proyecto (`.creative-ink-meta`) con `defaultEngine` (**pdflatex**). Prerrequisito: la clave `compile.engine` y `-pdf/-xelatex/-lualatex` en el orquestador y en `ci compile` |
 | RQ-11 | Recordar el origen de cada proyecto | `{id, version, source}` de la plantilla en `.creative-ink-meta`, para avisar de actualizaciones |
 | RQ-12 | Mostrar en la pantalla de inicio las plantillas descargadas con su nombre y descripción | Si la carpeta trae `template.json`, `TemplateInfo` puede usar `name`, `description` y `version` en lugar del nombre de carpeta |
@@ -360,7 +374,7 @@ results, err := c.GetPack(ctx, client.PackRequest{ID: "academico", DestRoot: abs
 | # | Requerimiento |
 |---|---------------|
 | RNF-1 | macOS, Linux y Windows por igual: sin shell, sin `make`, sin Python (todo en Go, como el resto de `ci`) |
-| RNF-2 | Seguridad (ver §8): HTTPS, `sha256`, extracción segura, límites, sin `.latexmkrc`, sin confianza heredada, nada se ejecuta al descargar |
+| RNF-2 | Seguridad (ver §8): HTTPS, **firma Ed25519 de cada JSON del catálogo** (contrato §7.1), `sha256` de los zips, extracción segura, límites, sin `.latexmkrc`, sin confianza heredada, **sin `--shell-escape`**, nada se ejecuta al descargar ni al crear el proyecto |
 | RNF-3 | Nunca usar `api.github.com` |
 | RNF-4 | No bloquear la UI: descargas cancelables (Ctrl+C / "Detener"), con progreso; reutilizar el streaming y el `OutputSpool` de la Terminal CI |
 | RNF-5 | La librería se importa sin dependencias transitivas (solo biblioteca estándar) |
@@ -374,7 +388,7 @@ results, err := c.GetPack(ctx, client.PackRequest{ID: "academico", DestRoot: abs
 | `ready` | Todo disponible | ✅ lista |
 | `missing-packages` | Algún `requires.files` no aparece en `kpsewhich` | ⚠ faltan paquetes + `tlmgr install <packages>` para que lo ejecute él |
 | `missing-engine` | Ningún motor de `build.engines` está instalado | ⚠ falta el motor (amplía el health check, que hoy no detecta pdfLaTeX, LuaLaTeX ni BibTeX) |
-| `needs-trust` | `build.shellEscape: true` | 🔒 requiere confianza |
+| `blocked` | `build.shellEscape: true` (sustituye a `needs-trust` desde el 2026-11-11) | ⛔ bloqueada: pide ejecutar comandos del sistema (`--shell-escape`), que v1 no permite. No se puede descargar ni usar, ni siquiera confiando |
 | `incompatible` | `schemaVersion` desconocida o `requires.creativeInk` mayor que la versión instalada | ⛔ actualiza Creative-Ink |
 
 Además, si la versión del índice es mayor que la descargada, se marca `update-available`. Es independiente del
@@ -384,17 +398,37 @@ estado.
 
 1. **Es la primera función de red del editor.** `net/http` con tiempos de espera (conexión, cabeceras y total),
    `http.ProxyFromEnvironment`, solo HTTPS. Las redirecciones de Releases van a
-   `objects.githubusercontent.com`: se aceptan porque la integridad la da el `sha256`.
-2. **Nada descargado se confía.** La decisión 7 de Creative-Ink (".latexmkrc de una plantilla propia = de
-   confianza") **no aplica** a plantillas descargadas. Aunque el contrato prohíbe `.latexmkrc`, si apareciera uno
-   el proyecto debe nacer `untrusted`.
-3. **Nada se ejecuta al descargar ni al crear el proyecto.** La primera compilación pasa por el Scheduler y las
-   reglas de confianza que ya existen.
-4. **Extracción con `bundle.SafeExtract`:** nunca con un unzip propio ni con la shell.
-5. **Los textos del catálogo son datos externos:** nombres, descripciones y parámetros nunca se renderizan como
+   `objects.githubusercontent.com`: se aceptan porque la integridad la dan la firma y el `sha256`.
+2. **Nada descargado se confía, y hay que corregir un hueco que ya existe hoy** (hallazgo del agente de Creative-Ink,
+   2026-11-11, gravedad alta).
+   - **El hueco:** `CreateProjectFromTemplate` (`registry_app.go:110-120`) confía en el `.latexmkrc` de **cualquier**
+     plantilla, sin mirar su origen. En un repositorio compartido, una cuenta puede dejar código Perl que otra
+     ejecutaría como de confianza.
+   - **La corrección:** confiar automáticamente solo en las plantillas propias del usuario
+     (`<UserConfigDir>/creative-ink/templates/`).
+   - **Las descargadas:** nunca confían ni copian un `.latexmkrc`. El contrato ya lo prohíbe (B4, sin distinguir
+     mayúsculas) y `bundle.SafeExtract` lo rechaza, pero Creative-Ink no debe depender solo de eso.
+   - **Prioridad:** independiente del catálogo; conviene hacerlo primero (respuesta 7 de §12.2).
+3. **Sin `--shell-escape`:** las plantillas con `shellEscape: true` se **bloquean** (`compat` devuelve `blocked`).
+   La regla de confianza de Creative-Ink no sirve aquí, porque una carpeta sin `.latexmkrc` ya es de confianza.
+4. **Nada se ejecuta al descargar ni al crear el proyecto.** Un proyecto creado desde el catálogo **no se compila
+   automáticamente al crearse**, aunque `compile.auto` esté activado. La primera compilación la pide el usuario y
+   pasa por el Scheduler y las reglas de confianza.
+5. **Extracción con `bundle.SafeExtract`:** nunca con un unzip propio ni con la shell. La librería también rechaza
+   las entradas que solo difieren en mayúsculas (B10), que en macOS y Windows se sobrescribirían.
+6. **Firma (contrato §7.1):** `client` verifica la firma Ed25519 de cada JSON del catálogo oficial con la clave fija
+   en la librería, y la de un catálogo de terceros si su fuente declara clave. Un fallo es `ErrSignature` y la
+   plantilla no se usa.
+7. **Los textos del catálogo son datos externos:** nombres, descripciones y parámetros nunca se renderizan como
    HTML (`{@html}` prohibido) ni se usan para construir comandos de shell. Los `clave=valor` que escribe el
-   usuario solo llegan a `params.Resolve`.
-6. **Los catálogos de terceros** se muestran marcados y sus fallos no afectan al oficial.
+   usuario solo llegan a `params.ParseAssignments` y `params.Resolve`.
+8. **El nombre del proyecto se pasa sin escapar** a `params.Input.ProjectName`: la librería lo escapa una sola vez.
+   Las plantillas del catálogo no usan `{{TITULO}}` (V39), así que la sustitución de `copyTemplate` no debe
+   aplicarse a ellas.
+9. **La red solo se usa bajo demanda** (respuesta 2 de §12.2): nada de consultas en segundo plano ni avisos
+   automáticos de actualizaciones. Solo cuando el usuario ejecuta `ci templates …`.
+10. **`templates.sources` solo en la capa del usuario** (RQ-9). Los catálogos de terceros se muestran marcados y sus
+    fallos no afectan al oficial.
 
 ## 9. Comandos `ci` propuestos (sugerencia; los decide Creative-Ink)
 
@@ -423,9 +457,10 @@ tools/fixtures/data/
 ├── templates/prueba/{ok-minima, futura, con-paquetes}/  ← fuentes: lista, incompatible, missing-packages
 ├── packs/prueba.json
 ├── params/{escape-cases.json, resolve-cases.json, ok-minima.*.ink-params.tex}
-├── invalid/{manifests.json, folders.json}               ← un caso por regla V01–V38
-└── bundles/cases.json                                   ← 14 zips: válido, checksum, zip slip, C:, \, enlace,
-                                                            .latexmkrc, script, dos raíces, sin meta, sin LICENSE,
+├── invalid/{manifests.json, folders.json}               ← un caso por regla V01–V39
+└── bundles/cases.json                                   ← 16 zips: válido, checksum, zip slip, C:, \, enlace,
+                                                            .latexmkrc (también en mayúsculas), colisión por
+                                                            mayúsculas, script, dos raíces, sin meta, sin LICENSE,
                                                             raíz distinta del id, bomba
 ```
 
@@ -449,7 +484,7 @@ tools/fixtures/data/
 | M0 | M | Gobierno: `CLAUDE.md`, `docs/MAP.md`, `CONTRIBUTING.md`, skills, `.gitattributes`, ramas | — |
 | M1 | M | Contrato v1 (`docs/contrato-plantillas.md`, esquemas JSON) + fixtures de §10 | C1 |
 | M2 | M | Librería Go (§5) con tests, `-race` y `go vet` en 3 sistemas | C2 |
-| C0 | C | Prerrequisito: clave `compile.engine`, detección de pdfLaTeX, LuaLaTeX, BibTeX y `kpsewhich` | C3 |
+| C0 | C | Prerrequisitos:<br>• **corregir la confianza por origen de la plantilla** (§8.2, hueco actual: va primero);<br>• tipos de clave nuevos en el servicio de configuración (lista para `templates.sources`, enum para `compile.engine`), con capa permitida por clave;<br>• `compile.engine`;<br>• detección de pdfLaTeX, LuaLaTeX, BibTeX y `kpsewhich` | C3 |
 | C1 | C | Análisis y diseño de la sección (rutas en `My-Creative-Ink-Repository`, comandos, IPC, decisiones) | C2 |
 | C2 | C | Catálogo de solo lectura: `list`, `search`, `info`, `packs`, `refresh` contra los fixtures | C3 |
 | M3 | M | Componentes compartidos (motor, paletas, institución UNAM-FES con logos) | M4 |
@@ -487,15 +522,47 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
    **Resuelto el 2026-11-11:** MIT para la librería y MIT-0 para las plantillas (`NOTICE.md`).
 10. Plantillas solo en español por ahora.
 
-### 12.2 Pendientes del lado de Creative-Ink (para su fase C1)
+### 12.2 Respuestas del programador a las preguntas del agente de Creative-Ink (2026-11-11)
 
-1. Estructura dentro de `My-Creative-Ink-Repository`: ¿lo descargado va a `.creative-ink/templates/<id>/` (ya lo
-   lee `ListTemplates`) o a otra carpeta? ¿Se permite descargar directamente como proyecto?
-2. Dónde va la caché del catálogo.
-3. Filas IPC y eventos (por ejemplo `templates:progress`, `templates:changed`), y si
-   `CreateProjectFromTemplate` pasa a aceptar parámetros (cambio de contrato).
-4. Cómo se muestra el progreso de una descarga en la Terminal CI (`terminal:progress` u otro evento).
-5. Si la galería en la UI entra en el MVP.
+1. **Dónde se guardan las descargadas:** en un directorio **del usuario**, por ejemplo
+   `<UserConfigDir>/creative-ink/catalog/<fuente>/<id>/`. Nunca en `.creative-ink/templates/` del repositorio: en uno
+   compartido, una cuenta inyectaría archivos a las demás. La ruta final la decide Creative-Ink.
+2. **La red solo bajo demanda:** prohibidas las consultas autónomas. La red se usa solo cuando el usuario ejecuta
+   `ci templates …` ("nada se instala de golpe").
+3. **`shellEscape: true` bloqueado en v1:** sí. El contrato lo prohíbe y `compat` devuelve `blocked`.
+4. **Catálogos de terceros desde el principio:** sí, con `templates.sources` en la capa del usuario.
+   - **Cómo se muestran:** marcados como "de terceros" y, sin clave pública, como "sin firma".
+   - **El oficial:** va fijo en el código y siempre firmado.
+5. **`compile.engine` antes que el catálogo:** es un prerrequisito (C0).
+   - **Mientras tanto:** las plantillas compilan con el XeLaTeX fijo gracias a `ink-motor.tex`.
+6. **Versiones:** `versions.json` guarda el historial publicado.
+   - **Al actualizar:** `templates update` descarga la versión nueva al catálogo local.
+   - **Proyectos ya creados:** **nunca** se modifican.
+   - **Si conviven varias versiones localmente:** lo decide Creative-Ink. La librería permite pedir una versión
+     concreta.
+7. **La confianza automática se limita a las plantillas propias del usuario:** sí, y **es lo primero** (§8.2).
+8. **Galería en la interfaz:** queda para la fase opcional C6; la primera versión es solo la Terminal CI.
+
+### 12.3 Pendientes del lado de Creative-Ink
+
+1. **Filas IPC y eventos:** un evento propio de progreso de descarga (el `terminal:progress` de compilación no
+   sirve), `templates:changed`, y si `CreateProjectFromTemplate` pasa a aceptar parámetros (cambio de contrato).
+2. **Biber:** `ci compile completo` usa siempre BibTeX. Las plantillas con `build.bibliography: "biber"` (o el
+   parámetro `bibliografia=biber`) fallarían hasta que lea ese campo. Las de este repositorio usan BibTeX por defecto.
+3. **Servicio de configuración:** tipos lista y enum, y la capa permitida por clave.
+
+### 12.4 Rediseño de UI/UX de Creative-Ink (`DEV-feat-UX-Editor`), decidido por el programador el 2026-11-11
+
+No afecta al catálogo. Se registra aquí porque las respuestas llegaron en el mismo mensaje:
+
+- **Bloque A, layout central:** se consolida el CSS Grid principal (`ActionBar | Sidebar | Workspace`) y el
+  explorador se queda en su cajón de 240 px.
+- **Bloque B, división del editor:** divisor arrastrable de 4 px (`col-resize`) entre los paneles principal y
+  secundario. Un archivo solo puede estar en un panel a la vez, para que los autoguardados no choquen.
+- **Bloque C, vista previa aislada:** PDF.js con `OffscreenCanvas` y Web Workers locales, para que un PDF grande
+  nunca congele CodeMirror.
+- **Bloque D, terminal híbrida:** pestañas separadas. "Terminal CI" para el registro de comandos seguros y "Shell"
+  para la ejecución directa en el sistema operativo.
 
 ## 13. Qué no hacer
 
@@ -504,7 +571,11 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
   importan de la librería (una sola implementación del contrato).
 - No usar `git clone` ni la API de GitHub para descargar.
 - No ejecutar `tlmgr`, compiladores ni nada que sugiera `compat.Hints`: solo se muestra el comando.
-- No confiar automáticamente en nada descargado.
+- No confiar automáticamente en nada descargado, ni en plantillas que no sean propias del usuario.
+- No compilar con `--shell-escape` nada que venga del catálogo.
+- No compilar automáticamente un proyecto recién creado desde el catálogo.
+- No consultar la red en segundo plano.
+- No subir un `replace` en el `go.mod`: se usa un `go.work` local.
 
 ## 14. Bitácora del documento
 
@@ -539,3 +610,12 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
   - **`pkg/params` implementado:** `ParseAssignments`, `Resolve`, `RenderInkParams` y `EscapeTeX` (firmas en §5).
   - **Verificación:** 47 casos de manifiesto, 10 de resolución, 2 salidas exactas de `ink-params.tex` y 9 de
     escapado; `go test -race` y `go vet` para darwin, linux y windows en verde.
+- **2026-11-11 (revisión de seguridad del agente de Creative-Ink, incorporada antes de seguir con M2):**
+  - **`shellEscape`:** pasa de "requiere confianza" a **bloqueado** (estado `blocked`, V10 y la regla nueva V39).
+  - **Firma:** firma Ed25519 de cada JSON del catálogo (contrato §7.1, `ErrSignature`).
+  - **Rutas:** rechazo de colisiones por mayúsculas (B10) y de rc de latexmk sin distinguir mayúsculas.
+  - **Marcadores:** prohibidos `{{TITULO}}`/`{{TITLE}}`.
+  - **Desarrollo local:** `go.work` en lugar de `replace`.
+  - **Requerimientos para Creative-Ink:** confianza por origen de la plantilla, no compilar al crear, red solo bajo
+    demanda y `templates.sources` solo en la capa del usuario.
+  - **Respuestas:** a las 8 preguntas del agente (§12.2) y decisiones de UI/UX (§12.4).

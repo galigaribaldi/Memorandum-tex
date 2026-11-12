@@ -1,5 +1,5 @@
 {
-  "description": "Carpetas de plantilla que inkt validate debe rechazar (docs/contrato-plantillas.md §12, V30–V38). No se guardan en git: el test copia 'base' a una carpeta temporal y aplica 'ops' en orden. Así no hay en el repositorio archivos que violen sus propias reglas, y el CRLF y el BOM sobreviven (.gitattributes convertiría un CRLF guardado). Operaciones: delete {path}; write {path, content, bom?, crlf?, latin1?} (latin1 codifica el contenido en ISO-8859-1); replace {path, old, new}; symlink {path, target} (en Windows sin permiso de enlaces, el caso se omite con t.Skip); fill {path, bytes} (archivo de ceros); copies {dir, count} (archivos .tex vacíos numerados).",
+  "description": "Carpetas de plantilla que inkt validate debe rechazar (docs/contrato-plantillas.md §12, V30–V39). No se guardan en git: el test copia 'base' a una carpeta temporal y aplica 'ops' en orden. Así no hay en el repositorio archivos que violen sus propias reglas, y el CRLF y el BOM sobreviven (.gitattributes convertiría un CRLF guardado). Operaciones: delete {path}; write {path, content, bom?, crlf?, latin1?} (latin1 codifica el contenido en ISO-8859-1); replace {path, old, new}; symlink {path, target} (en Windows sin permiso de enlaces, el caso se omite con t.Skip); fill {path, bytes} (archivo de ceros); copies {dir, count} (archivos .tex vacíos numerados).",
   "base": "../templates/prueba/ok-minima",
   "cases": [
     { "code": "V30", "name": "sin-changelog", "ops": [{ "op": "delete", "path": "CHANGELOG.md" }] },
@@ -10,7 +10,13 @@
     { "code": "V30", "name": "sin-readme", "ops": [{ "op": "delete", "path": "README.md" }] },
     { "code": "V31", "name": "nombre-con-espacio", "ops": [{ "op": "write", "path": "src/mi archivo.tex", "content": "% x\n" }] },
     { "code": "V31", "name": "nombre-con-acento", "ops": [{ "op": "write", "path": "src/introducción.tex", "content": "% x\n" }] },
+    {
+      "code": "V31", "name": "colision-mayusculas",
+      "ops": [{ "op": "write", "path": "src/secciones/Introduccion.tex", "content": "% otra\n" }],
+      "note": "En macOS y Windows este archivo y secciones/introduccion.tex son el mismo: si el sistema de archivos no distingue mayúsculas, el test lo omite con t.Skip (la regla equivalente del bundle, B10, se prueba en todos los sistemas)."
+    },
     { "code": "V32", "name": "latexmkrc", "ops": [{ "op": "write", "path": "src/.latexmkrc", "content": "$pdf_mode = 1;\n" }] },
+    { "code": "V32", "name": "latexmkrc-mayusculas", "ops": [{ "op": "write", "path": "src/.LATEXMKRC", "content": "$pdf_mode = 1;\n" }] },
     { "code": "V32", "name": "makefile", "ops": [{ "op": "write", "path": "src/Makefile", "content": "all:\n\techo hola\n" }] },
     { "code": "V32", "name": "script", "ops": [{ "op": "write", "path": "src/compilar.sh", "content": "#!/bin/sh\necho hola\n" }] },
     { "code": "V32", "name": "meta-a-mano", "ops": [{ "op": "write", "path": "src/.creative-ink-meta", "content": "{\"version\":1,\"mainFile\":\"main.tex\"}\n" }] },
@@ -39,6 +45,22 @@
     },
     { "code": "V38", "name": "crlf", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "crlf": true }] },
     { "code": "V38", "name": "bom", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "bom": true }] },
-    { "code": "V38", "name": "latin1", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "latin1": true }] }
+    { "code": "V38", "name": "latin1", "ops": [{ "op": "write", "path": "src/secciones/introduccion.tex", "content": "\\section{Introducción}\n", "latin1": true }] },
+    {
+      "code": "V39", "name": "tikz-externalize",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\usepackage{etoolbox}", "new": "\\usepackage{etoolbox}\n\\usepackage{tikz}\n\\usetikzlibrary{external}\n\\tikzexternalize" }]
+    },
+    {
+      "code": "V39", "name": "minted",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\usepackage{etoolbox}", "new": "\\usepackage{etoolbox}\n\\usepackage{minted}" }]
+    },
+    {
+      "code": "V39", "name": "write18",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\begin{document}", "new": "\\immediate\\write18{echo hola}\n\\begin{document}" }]
+    },
+    {
+      "code": "V39", "name": "marcador-titulo",
+      "ops": [{ "op": "replace", "path": "src/main.tex", "old": "\\providecommand{\\TituloDoc}{Plantilla mínima}", "new": "\\providecommand{\\TituloDoc}{{{TITULO}}}" }]
+    }
   ]
 }

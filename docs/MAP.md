@@ -172,6 +172,18 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
       resuelve en M5).
     - **Uso en el contrato:** `license` es una expresión SPDX y `inkt bundle` genera el `LICENSE` del bundle desde
       `LICENSES/`.
+15. **Sin `--shell-escape` en v1** (revisión de seguridad del agente de Creative-Ink):
+    - **En este repositorio:** `build.shellEscape: true` está prohibido (V10).
+    - **En la carpeta:** V39 rechaza externalización de TikZ, `minted`, `\write18` y los marcadores `{{TITULO}}`.
+    - **En los clientes:** bloquean la plantilla (`compat` → `blocked`).
+    - **Por qué no basta con "requerir confianza":** en Creative-Ink una carpeta sin `.latexmkrc` ya es de confianza.
+16. **Catálogo oficial firmado con Ed25519** (contrato §7.1):
+    - **Qué se firma:** cada JSON del catálogo, con su `.sig`.
+    - **Claves:** la pública va fija en la librería; la privada, en un secreto de GitHub Actions que custodia el
+      humano.
+    - **Terceros:** con clave declarada, firma obligatoria; sin ella, se muestran como "sin firma".
+17. **Endurecimiento de rutas:** se rechazan las entradas que colisionan por mayúsculas (B10) y los rc de latexmk sin
+    distinguir mayúsculas (B4).
 
 ### Plan por fases
 - [x] **M0 — Gobierno** (`DEV-feat-Contrato-Plantillas`, hecho el 2026-11-10, commits `f83dcf8`…`20852d6`): CLAUDE.md,
@@ -187,7 +199,9 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
     errores compartidos, V01–V20 con línea de cada hallazgo, V50–V52). 47/47 casos de manifiesto.
   - [x] Paso 2 (2026-11-11): `pkg/params` (`ParseAssignments`, `Resolve`, `RenderInkParams`, `EscapeTeX`). 10/10 casos
     de resolución, 2 salidas exactas de `ink-params.tex` y 9 de escapado.
-  - [ ] Paso 3: `pkg/compat`. · [ ] Paso 4: validación de carpeta (V30–V38). · [ ] Paso 5: `pkg/bundle`.
+  - [x] Paso 3 (2026-11-11): `pkg/compat` (`Evaluate`, `EvaluateJSON`, `UpdateAvailable`). Severidad: incompatible >
+    blocked > missing-engine > missing-packages > ready. `--shell-escape` siempre da `blocked`. 7 tests.
+  - [ ] Paso 4: validación de carpeta (V30–V39). · [ ] Paso 5: `pkg/bundle`.
   - [ ] Paso 6: `pkg/catalogtest` + `inkt index`. · [ ] Paso 7: `pkg/client`. · [ ] Paso 8: `cmd/inkt`.
 - [ ] **M3 — Componentes compartidos:** motor, base, paletas, comandos, institución UNAM-FES con logos.
 - [ ] **M4 — Piloto `ensayo`** de punta a punta (el humano lo compila con los tres motores).
@@ -227,8 +241,11 @@ Se resuelve al migrar cada plantilla; se tacha con fecha, nunca se borra.
     que se "compila" con el objetivo de scaffolding). Decisión: README por plantilla validado contra el manifiesto. Estado: pendiente.
 13. **Tesis: BibTeX/natbib frente a Biber/biblatex según el archivo** (`CLAUDE.md`, README y CI de TesisUrbanismo).
     Decisión: decisión 6 de §4.8. Estado: pendiente.
-14. **Tesis: externalización de TikZ con `--shell-escape` obligatorio.** Decisión: opcional y apagada (`shellEscape:
-    false`). Estado: pendiente.
+14. **Tesis: externalización de TikZ con `--shell-escape` obligatorio.** ~~Decisión: opcional y apagada
+    (`shellEscape: false`).~~ **Decisión del 2026-11-11 (decisión 15):** sin externalización en v1, porque
+    `--shell-escape` está bloqueado. La tesis compila sus diagramas TikZ en cada pasada; si el tiempo de compilación
+    lo exige, se estudiará más adelante una alternativa sin shell (por ejemplo, PDF de los diagramas generados aparte).
+    Estado: pendiente (se aplica en M6).
 15. **Tesis: `make solo` renombra `tesis.pdf` y borra el PDF completo.** Decisión: compatible con el `-jobname` de
     Creative-Ink. Estado: pendiente.
 16. **Nombres con espacios, acentos o erratas** (`Instructions Plantilla *.md`, `Comands.tex`, `SociologíaUrbana.md`).
@@ -241,7 +258,7 @@ Se resuelve al migrar cada plantilla; se tacha con fecha, nunca se borra.
 | `DocumentosPlantilla/Ensayos/{ConPortada,SinPortada}` | `ensayo` | `academico` | `portada` (bool), `color` | academico | M4 |
 | `DocumentosPlantilla/Articulos/{ConPortada,SinPortada}` | `articulo` | `academico` | `portada` (bool), `palabrasClave` (list), `color` | academico | M5 |
 | `DocumentosPlantilla/Articulos/RegistroDiff` | `registro-avances` | `academico` | repositorio, versiones de referencia | academico | M5 |
-| `TesisUrbanismo` | `tesis` | `academico` | grado, programa, tutor, comité (list), `bibliografia`, `tikzExterno` (bool) | academico | M6 |
+| `TesisUrbanismo` | `tesis` | `academico` | grado, programa, tutor, comité (list), `bibliografia` (sin externalización de TikZ: decisión 15) | academico | M6 |
 | `PresentacionPlantilla` | `presentacion-institucional` | `presentacion` | `color`, profesor, semestre | presentaciones | M5 |
 | `DocumentosPlantilla/SotmLatam` | `presentacion-sotm-latam` | `presentacion` | afiliación | presentaciones | M5 |
 | `InfografiaPlantilla` | `infografia` | `difusion` | `tamano` (A4Portrait, A3Portrait, A4Landscape), `color` | presentaciones | M5 |

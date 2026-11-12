@@ -34,6 +34,10 @@
       "patch": { "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "lualatex", "bibliography": "none" } }
     },
     {
+      "code": "V10", "level": "error", "name": "shell-escape",
+      "patch": { "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "none", "shellEscape": true } }
+    },
+    {
       "code": "V10", "level": "error", "name": "bibliografia-desconocida",
       "patch": { "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "bibtex8" } }
     },
