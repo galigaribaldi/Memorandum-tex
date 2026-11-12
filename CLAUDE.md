@@ -32,8 +32,10 @@ Método de trabajo: `WORKFLOW_BLUEPRINT.md` (Tríada, contrato vivo, deuda como 
 - **Personalizable antes de usar:** el manifiesto declara parámetros (variantes como booleanos), motores y modos; la
   librería valida los valores y escribe `ink-params.tex`.
 - **Extensible sin tocar nada central:** una plantilla nueva es una carpeta con su manifiesto; el índice se genera.
-- Decisiones tomadas: MAP §4.8. **Pendientes (no las asumas, espera instrucciones):** licencia definitiva (probablemente
-  MIT, fase M8) e identidad (texto de muestra con el nombre y la descripción del repositorio, fase M8).
+- **Licencias (2026-11-11, `NOTICE.md`):** MIT-0 para plantillas y `shared/`, MIT para el resto. Los logos
+  institucionales y el material de terceros quedan excluidos.
+- Decisiones tomadas: MAP §4.8. **Pendiente (no la asumas, espera instrucciones):** identidad, es decir, el texto de
+  muestra con el nombre y la descripción del repositorio (fase M8).
 
 ## Skills del proyecto (`.claude/skills/`)
 - **`latex-template-author`:** crear, migrar o editar una plantilla o un componente de `shared/`. Incluye la lista de

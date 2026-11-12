@@ -59,4 +59,10 @@ Agregar una plantilla no requiere tocar nada central: ver [CONTRIBUTING.md](CONT
 
 ## Licencia
 
-Software libre. La licencia definitiva se decidirá antes de la primera publicación (fase M8).
+Software libre, con dos licencias según el contenido (detalle en [NOTICE.md](NOTICE.md)):
+
+- **Plantillas y componentes LaTeX:** [MIT-0](LICENSES/MIT-0.txt). Lo que escribas con una plantilla es tuyo y no
+  tiene que conservar ningún aviso de Memorandum-tex.
+- **Herramientas, librería Go, esquemas y documentación:** [MIT](LICENSE).
+
+Los escudos y logotipos institucionales pertenecen a sus instituciones y no están cubiertos por estas licencias.

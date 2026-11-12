@@ -12,6 +12,9 @@ Memorandum-tex/
 ├── README.md                      ← qué es, cómo se usa, estado
 ├── CONTRIBUTING.md                ← cómo proponer una plantilla nueva o un cambio
 ├── WORKFLOW_BLUEPRINT.md          ← método de trabajo con IA (Tríada, contrato vivo, deuda, verificación)
+├── LICENSE                        ← MIT (lo detecta GitHub): herramientas, librería, esquemas, documentación
+├── LICENSES/                      ← textos exactos por identificador SPDX (REUSE): MIT.txt, MIT-0.txt (+ LicenseRef-*)
+├── NOTICE.md                      ← qué licencia cubre qué; exclusiones (logos, material de terceros)
 ├── .gitattributes                 ← LF en todo; binarios sin conversión; sin LFS
 ├── .gitignore                     ← auxiliares de LaTeX, dist/, ajustes personales
 ├── .editorconfig                  ← UTF-8, LF, 2 espacios (tabs en Go)
@@ -42,13 +45,14 @@ Memorandum-tex/
 │   ├── go.mod
 │   ├── cmd/inkt/                  ← CLI: validate, index, bundle, new, check, format, diff, clean
 │   └── pkg/{contract,params,compat,bundle,client}/ ← librería que importa Creative-Ink
+│       └── catalogtest/           ← catálogo de prueba servido con httptest (lo usan los tests de los dos repositorios)
 ├── tests/fixtures/                ← datos de prueba del contrato (ver su README)
 │   ├── templates/prueba/          ← ok-minima (válida), futura (schemaVersion 99), con-paquetes (missing-packages)
 │   ├── packs/prueba.json
 │   ├── params/                    ← EscapeTeX, Resolve y salida exacta de ink-params.tex
 │   ├── invalid/                   ← manifests.json (V01–V20) y folders.json (V30–V38), generados al vuelo en los tests
 │   ├── bundles/cases.json         ← 14 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
-│   └── catalog/v1/                ← ⏳ M2: catálogo servible que genera inkt index
+│   └── (sin catálogo generado: lo construye tools/pkg/catalogtest en cada test, decisión 12)
 └── .github/workflows/             ← ⏳ M7: validate.yml (3 SO) y release.yml (Pages + Releases)
 ```
 
@@ -141,11 +145,27 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 6. Motor por defecto **pdfLaTeX** (Xe/LuaLaTeX opcionales). Bibliografía por defecto **natbib/apalike + BibTeX** (la
    que predomina en Trabajos-Maestria-Urbanismo); biblatex + Biber opcional.
 7. Se incluyen los logos UNAM/FES.
-8. Software libre; licencia (probablemente MIT) e identidad (texto de muestra con el nombre y la descripción del
-   repositorio) se deciden al final, en M8.
+8. ~~Software libre; licencia (probablemente MIT) e identidad (texto de muestra con el nombre y la descripción del
+   repositorio) se deciden al final, en M8.~~ **Resuelto el 2026-11-11:** la licencia es MIT + MIT-0 (decisión 14);
+   en M8 queda solo la identidad.
 9. Solo español por ahora.
 10. Kit de la tesis: issues, CHANGELOG, CONTEXTO y revisiones por defecto; CI y `CLAUDE.md` opcionales.
 11. En Creative-Ink: catálogo en el **núcleo** y **catálogos de terceros** marcados como tales.
+
+### Decisiones del usuario (2026-11-11)
+12. **El catálogo de prueba es un paquete Go** (`tools/pkg/catalogtest`): construye en una carpeta temporal el índice,
+    los manifiestos publicados, los paquetes y los 14 zips de `tests/fixtures/`, y devuelve un `httptest.Server`. No se
+    guardan zips ni catálogos generados en git; Creative-Ink lo llama desde sus tests.
+13. **La licencia se decide antes de la primera publicación (M7)**, porque B6 exige `LICENSE` en cada bundle. En M8
+    queda solo la identidad (texto de muestra).
+14. **Licencias: MIT + MIT-0** (convención REUSE, `NOTICE.md`):
+    - **MIT-0:** plantillas y `shared/`, para que los documentos de los usuarios no tengan que conservar avisos.
+    - **MIT:** herramientas, librería, esquemas y documentación; es compatible con cualquier licencia que elija
+      Creative-Ink.
+    - **Exclusiones:** los logos institucionales y el material de terceros (la clase ISPRS no declara licencia: se
+      resuelve en M5).
+    - **Uso en el contrato:** `license` es una expresión SPDX y `inkt bundle` genera el `LICENSE` del bundle desde
+      `LICENSES/`.
 
 ### Plan por fases
 - [x] **M0 — Gobierno** (`DEV-feat-Contrato-Plantillas`, hecho el 2026-11-10, commits `f83dcf8`…`20852d6`): CLAUDE.md,
@@ -155,14 +175,16 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
   (fuentes y casos), `docs/guia-nueva-plantilla.md`. *Ajuste del 2026-11-10:* los zips y el catálogo de prueba no se
   escriben a mano; los genera M2 con el mismo código que publica el catálogo real (reproducibles).
 - [ ] **M2 — Librería Go:** `tools/pkg/{contract,params,compat,bundle,client}` + `inkt validate|index|bundle`, con tests,
-  `-race` y `go vet` para darwin, linux y windows. Incluye el generador de `tests/fixtures/catalog/v1/` y los tests que
-  recorren todos los casos de `tests/fixtures/`.
+  `-race` y `go vet` para darwin, linux y windows. Incluye `pkg/catalogtest` (decisión 12) y los tests que recorren
+  todos los casos de `tests/fixtures/`.
 - [ ] **M3 — Componentes compartidos:** motor, base, paletas, comandos, institución UNAM-FES con logos.
 - [ ] **M4 — Piloto `ensayo`** de punta a punta (el humano lo compila con los tres motores).
 - [ ] **M5 — Migración del resto** (§5).
 - [ ] **M6 — Tesis** + kit de seguimiento + `inkt check|format|diff|new`.
+- [x] **Licencia** (decisiones 13 y 14, hecho el 2026-11-11): `LICENSE`, `LICENSES/{MIT,MIT-0}.txt`, `NOTICE.md`,
+  `license` como expresión SPDX en el contrato y en los fixtures. *Queda para M5:* el `LicenseRef` de la clase ISPRS.
 - [ ] **M7 — CI y publicación:** `validate.yml` (3 SO) y `release.yml` (Pages + Releases).
-- [ ] **M8 — Identidad y licencia.**
+- [ ] **M8 — Identidad:** texto de muestra con el nombre y la descripción del repositorio en cada plantilla.
 
 ## 4.9 Deuda técnica heredada (detectada el 2026-11-10 al analizar los repositorios de origen)
 
@@ -184,6 +206,9 @@ Se resuelve al migrar cada plantilla; se tacha con fecha, nunca se borra.
 9. **`bibtex main || true` oculta errores.** Decisión: latexmk/Creative-Ink reportan el fallo como resultado. Estado: pendiente.
 10. **ISPRS usa `subfigure`, `epsfig`, `times` y una figura EPS** (requiere epstopdf). Decisión: modernizar o declarar
     el requisito. Estado: pendiente.
+    *Además (2026-11-11):* `isprs.cls` e `isprs.bst` son © Carsten Steger e ISPRS y **no declaran licencia**: no
+    pueden ir como MIT-0. Al migrar, decidir entre redistribuirlos como `LicenseRef-isprs` con aviso o pedir que se
+    descarguen de ISPRS.
 11. **`lipsum` en las plantillas e infografía con `\vspace` fijos** para librar la cabecera. Decisión: texto de muestra
     propio (M8) y medidas derivadas de la cabecera. Estado: pendiente.
 12. **Documentación que contradice al código** (instrucciones de color, README con carpetas inexistentes, CartaUNAM

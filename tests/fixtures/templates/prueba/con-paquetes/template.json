@@ -7,7 +7,7 @@
   "description": "Fixture: requires.files nombra un archivo que kpsewhich no encuentra, así que el estado es missing-packages.",
   "category": "prueba",
   "language": "es-MX",
-  "license": "MIT",
+  "license": "MIT-0",
   "authors": [{ "name": "Memorandum-tex" }],
   "entry": "main.tex",
   "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "none", "shellEscape": false },

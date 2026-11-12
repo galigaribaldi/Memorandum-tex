@@ -29,11 +29,15 @@ tests/fixtures/
 - **Fin de línea:** `.gitattributes` convierte a LF al hacer checkout, así que un caso CRLF guardado dejaría de ser
   CRLF. Por eso el CRLF, el BOM y el Latin-1 se escriben en tiempo de test.
 
-## Catálogo de prueba (⏳ M2)
+## Catálogo de prueba (⏳ M2, decisión 12 del MAP)
 
-`inkt index` generará `tests/fixtures/catalog/v1/` (índice, manifiestos publicados, `versions.json`, paquetes y zips)
-a partir de `templates/prueba/` y `packs/`, con el mismo código que publica el catálogo real. `futura` se publica sin
-validar y `checksum-malo` con un hash alterado. Creative-Ink podrá servir esa carpeta con un `httptest.Server`.
+No se guarda en git. `tools/pkg/catalogtest` lo construye en una carpeta temporal a partir de `templates/prueba/`,
+`packs/` y `bundles/cases.json`, con el mismo código que publica el catálogo real. Lo que construye:
+- el índice, los manifiestos publicados, los `versions.json`, los paquetes y los zips;
+- `futura`, publicada sin validar;
+- `checksum-malo`, con un hash alterado.
+
+Devuelve un `httptest.Server` listo para usar desde los tests de este repositorio y de Creative-Ink.
 
 ## Cómo añadir un caso
 

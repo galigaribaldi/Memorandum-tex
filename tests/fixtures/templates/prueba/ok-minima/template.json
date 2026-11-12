@@ -8,7 +8,7 @@
   "category": "prueba",
   "tags": ["prueba", "fixture"],
   "language": "es-MX",
-  "license": "MIT",
+  "license": "MIT-0",
   "authors": [{ "name": "Memorandum-tex" }],
   "entry": "main.tex",
   "build": {

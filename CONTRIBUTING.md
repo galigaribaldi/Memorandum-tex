@@ -53,8 +53,11 @@ solo.
 - Sin `--shell-escape` salvo que `build.shellEscape` lo declare (y entonces la plantilla requiere confianza en
   Creative-Ink).
 - Sin `lipsum`: el texto de muestra lo da el repositorio (⏳ M8).
-- La licencia de la plantilla es la del repositorio (⏳ M8). Si incluyes material de terceros (una clase oficial de un
-  congreso, un logo), indica su origen y licencia en el README de la plantilla.
+- Licencia (`NOTICE.md`):
+  - **Plantillas:** `"license": "MIT-0"`. Si incluyes material de terceros (por ejemplo, la clase oficial de un
+    congreso), añade `AND LicenseRef-<nombre>` y su texto en `LICENSES/LicenseRef-<nombre>.txt`. Indica también su
+    origen en el README de la plantilla.
+  - **Logos institucionales:** no se licencian; van en `shared/instituciones/<id>/logos/`.
 
 ## 4. Lista de comprobación del PR
 
@@ -65,6 +68,9 @@ solo.
 - [ ] Compila sin errores con cada motor de `build.engines` (indica cuáles probaste y en qué sistema operativo).
 - [ ] `inkt validate` sin errores (⏳ M2).
 - [ ] Si cambiaste el contrato, `schema/`, `tests/fixtures/` y `docs/integracion-creative-ink.md` cambian en el mismo PR.
+
+Al contribuir aceptas que tu aporte se publique con la licencia que corresponde a su tipo de contenido (MIT-0 para
+plantillas y `shared/`, MIT para lo demás); conservas el copyright de lo que escribas.
 
 ## 5. Commits
 

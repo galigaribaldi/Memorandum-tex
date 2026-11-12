@@ -281,6 +281,7 @@ ensayo-1.0.0.zip
 | `pkg/compat` | `Evaluate(manifest, Env) → Report{Status, Missing, Hints}` | No: Creative-Ink le pasa `Env` | No |
 | `pkg/bundle` | `VerifySHA256`, `SafeExtract(zip, dst, Limits)` con la lista permitida de §4.5 | No | No |
 | `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get` (individual), `GetPack`; caché con ETag; resultado offline | No | Sí (HTTPS) |
+| `pkg/catalogtest` | Solo para tests: construye el catálogo de prueba de `tests/fixtures/` y lo sirve con `httptest.Server` | No | Solo local (`127.0.0.1`) |
 
 **API propuesta** (puede ajustarse en M2; la versión final se documenta en `docs/contrato-plantillas.md`):
 
@@ -426,9 +427,12 @@ tests/fixtures/
 
 - **Los zips no se guardan en git:** se construyen en los tests con fecha fija, así que el `sha256` es reproducible
   en los tres sistemas.
-- **Catálogo servible (⏳ M2):** en M2, `inkt index` generará `tests/fixtures/catalog/v1/` con índice, manifiestos
-  publicados, `versions.json`, paquetes y zips. Con esa carpeta servida por un `httptest.Server`, Creative-Ink puede
-  probar `ci templates …` de punta a punta sin red.
+- **Catálogo servible (⏳ M2, decidido el 2026-11-11):** no habrá una carpeta generada en git.
+  - **Qué es:** el paquete `tools/pkg/catalogtest` construye el catálogo completo en una carpeta temporal (índice,
+    manifiestos publicados, `versions.json`, paquetes y los 14 zips) y devuelve un `httptest.Server`.
+  - **Para qué sirve:** con él, Creative-Ink prueba `ci templates …` de punta a punta sin red, llamándolo desde sus
+    tests: `srv := catalogtest.NewServer(t)` y `srv.IndexURL()`.
+  - **Pendiente:** la firma final se fija en M2.
 - **Ya utilizable:** `params/escape-cases.json` sirve desde hoy para un test de `core.EscapeTeX` en Creative-Ink. Sus
   casos coinciden con su implementación actual (`repository.go`).
 
@@ -452,7 +456,8 @@ tests/fixtures/
 | M6 | M | Tesis + kit de seguimiento (issues, CHANGELOG, CONTEXTO, revisiones) | M7 |
 | M7 | M | Publicación: GitHub Pages (catálogo) + Releases (bundles) desde CI | C5 |
 | C5 | C | Integración con el catálogo real | — |
-| M8 | M | Identidad y licencia (texto de muestra con el nombre y la descripción del repositorio, `LICENSE` en cada bundle) | — |
+| — | M | Licencias **hechas el 2026-11-11**: MIT-0 para plantillas, MIT para la librería (compatible con cualquier licencia de Creative-Ink) | — |
+| M8 | M | Identidad (texto de muestra con el nombre y la descripción del repositorio) | — |
 | C6 | C | (Opcional) galería en la UI | — |
 
 Casillas de seguimiento (se marcan con fecha al cerrar):
@@ -474,7 +479,8 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
 7. Motor por defecto **pdfLaTeX** (XeLaTeX y LuaLaTeX opcionales). Bibliografía por defecto **natbib/apalike +
    BibTeX** (biblatex + Biber opcional).
 8. El catálogo va en el **núcleo** de Creative-Ink (no como plugin) y admite **catálogos de terceros** marcados.
-9. Se incluyen los logos UNAM/FES. Software libre; la licencia (probablemente MIT) se decide al final (M8).
+9. Se incluyen los logos UNAM/FES. ~~Software libre; la licencia (probablemente MIT) se decide al final (M8).~~
+   **Resuelto el 2026-11-11:** MIT para la librería y MIT-0 para las plantillas (`NOTICE.md`).
 10. Plantillas solo en español por ahora.
 
 ### 12.2 Pendientes del lado de Creative-Ink (para su fase C1)
@@ -507,3 +513,10 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
   - **Comprobado en Creative-Ink:** `.creative-ink-meta` (`ProjectMeta {version, mainFile, config}`) y
     `core.EscapeTeX` (mismas 10 sustituciones, una sola pasada).
   - **Errores:** se añaden `ErrForbiddenFile` y `ErrBundleLayout`.
+- **2026-11-11:**
+  - **Catálogo de prueba:** pasa a ser el paquete `pkg/catalogtest` (sin zips en git).
+  - **Licencia:** decidida: **MIT** para la librería que importará Creative-Ink y **MIT-0** para las plantillas
+    (`NOTICE.md`). Al importar la librería, Creative-Ink debe conservar el aviso MIT. Las plantillas descargadas no
+    imponen nada a los documentos del usuario.
+  - **Fixture `ok-minima`:** compilado sin errores ni desbordes con pdfLaTeX, XeLaTeX y LuaLaTeX, con `ink-params.tex`
+    y en los modos borrador y capítulo.

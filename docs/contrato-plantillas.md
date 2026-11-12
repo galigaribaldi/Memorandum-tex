@@ -50,7 +50,7 @@ Vive en `templates/<categoria>/<id>/template.json`.
   "category": "academico",
   "tags": ["ensayo", "apa", "unam"],
   "language": "es-MX",
-  "license": "MIT",
+  "license": "MIT-0",
   "authors": [{ "name": "Hernán Galileo Cabrera Garibaldi", "github": "galigaribaldi" }],
   "entry": "main.tex",
   "build": {
@@ -90,7 +90,7 @@ Vive en `templates/<categoria>/<id>/template.json`.
 | `category` | string | Sí | `^[a-z]+(-[a-z]+)*$`, igual a la carpeta padre. Recomendadas: `academico`, `presentacion`, `difusion`, `correspondencia`, `congresos` (una nueva da aviso, no error) |
 | `tags` | string[] | No | Hasta 10, `^[a-z0-9]+(-[a-z0-9]+)*$`, sin repetir |
 | `language` | string | Sí | `^[a-z]{2}(-[A-Z]{2})?$`. En este repositorio, `es` o `es-XX` |
-| `license` | string | Sí | Identificador SPDX (`MIT`, `LPPL-1.3c`, `CC-BY-4.0`…). Se fija en M8 |
+| `license` | string | Sí | Expresión SPDX con `AND` (`MIT-0`, `MIT-0 AND LicenseRef-isprs`). Cada identificador tiene su texto en `LICENSES/<identificador>.txt` del repositorio de origen. **Política de este repositorio** (decisión del 2026-11-11, `NOTICE.md`): incluye `MIT-0`; el material de terceros añade un `LicenseRef-<nombre>` |
 | `authors` | objeto[] | Sí | Al menos uno: `{ name (obligatorio), github?, email? }` |
 | `entry` | string | Sí | Ruta relativa a `src/`, termina en `.tex`, debe existir |
 | `build` | objeto | Sí | §3.1 |
@@ -237,7 +237,7 @@ Al publicar, `inkt index` escribe `catalog/v1/templates/<id>/<versión>/template
       "category": "academico",
       "tags": ["ensayo", "apa", "unam"],
       "language": "es-MX",
-      "license": "MIT",
+      "license": "MIT-0",
       "latest": "1.0.0",
       "engines": ["pdflatex", "xelatex", "lualatex"],
       "defaultEngine": "pdflatex",
@@ -301,7 +301,7 @@ ensayo-1.0.0.zip
 | B3 | Sin enlaces simbólicos ni entradas que no sean archivos o carpetas normales |
 | B4 | Archivos permitidos: extensiones `tex sty cls bst bib bbx cbx lbx cfg def md txt json png jpg jpeg pdf eps svg otf ttf` y los nombres exactos `LICENSE` y `.creative-ink-meta`. Cualquier otro (incluidos `.latexmkrc`, `latexmkrc`, `Makefile` y `*.sh`) se rechaza |
 | B5 | Como máximo 2000 archivos y 200 MB descomprimidos; ningún archivo con una relación de compresión mayor que 100:1 (bomba zip) |
-| B6 | Contiene `template.json`, `LICENSE`, `README.md`, `.creative-ink-meta` y el `entry`. `template.json` coincide en `id` y `version` con el índice |
+| B6 | Contiene `template.json`, `LICENSE`, `README.md`, `.creative-ink-meta` y el `entry`. `template.json` coincide en `id` y `version` con el índice. `LICENSE` lo genera `inkt bundle`: los textos de `LICENSES/<identificador>.txt` de cada identificador de `license`, en el orden de la expresión, separados por una línea en blanco |
 | B7 | `.creative-ink-meta` tiene exactamente `version: 1` y `mainFile` igual al `entry`. La configuración del proyecto (motor, etc.) la escribe Creative-Ink, no el bundle |
 | B8 | Reproducible: entradas ordenadas por ruta, fecha fija `2000-01-01T00:00:00Z`, método Deflate. Mismo contenido → mismo `sha256` en cualquier sistema |
 | B9 | El `sha256` se verifica sobre el zip completo **antes** de extraer |
@@ -359,7 +359,7 @@ código) y los mensajes de error.
 | V05 | `version` es semver (§2) |
 | V06 | `name`, `description`, `category` y `tags` cumplen §3 |
 | V07 | `language` cumple §3 (y es `es`/`es-XX` en este repositorio) |
-| V08 | `license` no vacío y `authors` con al menos un `name` |
+| V08 | `license` es una expresión SPDX con `AND`, cada identificador existe en `LICENSES/` y, en este repositorio, incluye `MIT-0`; `authors` con al menos un `name` |
 | V09 | `entry` relativo, `.tex` y existente en `src/` |
 | V10 | `build` cumple §3.1, incluida la política de motores de este repositorio |
 | V11 | `requires` cumple §3.2 |
@@ -424,3 +424,7 @@ Tipados, comparables con `errors.Is` o `errors.As`:
 - Errores nuevos: `ErrForbiddenFile` y `ErrBundleLayout`.
 - `category` abierta (patrón + lista recomendada) para que añadir una categoría no requiera tocar el contrato.
 - Rutas del zip con el mismo juego de caracteres que V31 (B2), para rechazar `C:` y `\` en todos los sistemas.
+- (2026-11-11) Licencias:
+  - `license` es una expresión SPDX con `AND`, resuelta contra `LICENSES/`.
+  - El `LICENSE` del bundle lo genera `inkt bundle` (B6).
+  - En este repositorio las plantillas son `MIT-0` y el resto es `MIT` (`NOTICE.md`).

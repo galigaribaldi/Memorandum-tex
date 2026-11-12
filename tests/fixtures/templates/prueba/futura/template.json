@@ -6,7 +6,7 @@
   "description": "Fixture: schemaVersion desconocida. Los clientes la marcan incompatible sin romper el catálogo.",
   "category": "prueba",
   "language": "es-MX",
-  "license": "MIT",
+  "license": "MIT-0",
   "authors": [{ "name": "Memorandum-tex" }],
   "entry": "main.tex",
   "build": { "engines": ["pdflatex", "xelatex"], "defaultEngine": "pdflatex", "bibliography": "none" },
