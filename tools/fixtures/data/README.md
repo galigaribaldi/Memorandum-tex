@@ -16,8 +16,9 @@ tools/fixtures/data/
 │   └── ok-minima.<caso>.ink-params.tex             ← salida exacta de RenderInkParams (comparación byte a byte)
 ├── invalid/
 │   ├── manifests.json    ← un caso por regla V01–V20 (JSON Merge Patch sobre ok-minima)
-│   └── folders.json      ← un caso por regla V30–V38 (operaciones sobre una copia de ok-minima)
-└── bundles/cases.json    ← zips válidos y maliciosos que construye el test (zip slip, enlaces, .latexmkrc, bomba…)
+│   └── folders.json      ← un caso por regla V30–V39 (operaciones sobre una copia de ok-minima)
+└── bundles/cases.json    ← 16 zips válidos y maliciosos que construye el test (zip slip, enlaces, .latexmkrc en
+                            cualquier forma, colisión por mayúsculas, bomba…)
 ```
 
 ## Por qué no hay zips ni casos rotos guardados en git

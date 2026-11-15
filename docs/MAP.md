@@ -16,7 +16,7 @@ Memorandum-tex/
 ├── LICENSES/                      ← textos exactos por identificador SPDX (REUSE): MIT.txt, MIT-0.txt (+ LicenseRef-*)
 ├── NOTICE.md                      ← qué licencia cubre qué; exclusiones (logos, material de terceros)
 ├── .gitattributes                 ← LF en todo; binarios sin conversión; sin LFS
-├── .gitignore                     ← auxiliares de LaTeX, dist/, ajustes personales
+├── .gitignore                     ← auxiliares de LaTeX, dist/, go.work, claves de firma (*.key), ajustes personales
 ├── .editorconfig                  ← UTF-8, LF, 2 espacios (tabs en Go)
 ├── .claude/
 │   ├── settings.json              ← permisos: sin borrar, sin commit/push/tags; leer y escribir con permiso
@@ -43,19 +43,22 @@ Memorandum-tex/
 ├── templates/                     ← ⏳ M4–M6: templates/<categoria>/<id>/{template.json,README.md,CHANGELOG.md,preview.png,src/}
 ├── tools/                         ← módulo Go github.com/galigaribaldi/Memorandum-tex/tools (go 1.22, solo biblioteca estándar)
 │   ├── go.mod
-│   ├── cmd/inkt/                  ← ⏳ M2: CLI validate, index, bundle (después: new, check, format, diff, clean)
+│   ├── cmd/inkt/                  ← ⏳ M2 paso 8: CLI validate, bundle, index, sign (después: new, check, format, diff, clean)
 │   ├── fixtures/                  ← paquete Go que incrusta los datos de prueba (embed.FS): viajan con el módulo
 │   │   └── data/                  ← datos de prueba del contrato (ver su README)
 │   │       ├── templates/prueba/  ← ok-minima (válida), futura (schemaVersion 99), con-paquetes (missing-packages)
 │   │       ├── packs/prueba.json
 │   │       ├── params/            ← EscapeTeX, Resolve y salida exacta de ink-params.tex
-│   │       ├── invalid/           ← manifests.json (V01–V20) y folders.json (V30–V38), generados al vuelo en los tests
-│   │       └── bundles/cases.json ← 14 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
+│   │       ├── invalid/           ← manifests.json (V01–V20) y folders.json (V30–V39), generados al vuelo en los tests
+│   │       └── bundles/cases.json ← 16 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
 │   ├── internal/fixturetest/      ← ayudas de test: carga de casos, JSON Merge Patch
 │   └── pkg/
-│       ├── contract/              ← tipos, errores compartidos y validación del manifiesto (V01–V20) y paquetes (V50–V51)
-│       ├── params/  compat/  bundle/  client/   ← ⏳ M2
-│       └── catalogtest/           ← ⏳ M2: catálogo de prueba servido con httptest (tests de los dos repositorios)
+│       ├── contract/              ← ✅ tipos, errores compartidos, validación del manifiesto (V01–V20) y paquetes (V50–V52)
+│       ├── params/                ← ✅ ParseAssignments, Resolve, RenderInkParams, EscapeTeX
+│       ├── compat/                ← ✅ Evaluate, EvaluateJSON, UpdateAvailable (ready … blocked)
+│       ├── bundle/                ← ⏳ paso 5: empaquetar (reproducible), VerifySHA256, SafeExtract (B1–B10)
+│       ├── catalogtest/           ← ⏳ paso 6: catálogo de prueba firmado (clave efímera) servido con httptest
+│       └── client/                ← ⏳ paso 7: índice, manifiestos, firmas, caché ETag, Get y GetPack
 └── .github/workflows/             ← ⏳ M7: validate.yml (3 SO) y release.yml (Pages + Releases)
 ```
 
@@ -68,10 +71,10 @@ Memorandum-tex/
           │  los componentes declarados         ▼
  shared/*  ─────────copiados a──────────►  <id>-<versión>.zip  (autocontenido, Latex/ink/…)
                                                  │
-                                    inkt index   ▼
-                            catalog/v1/index.json + manifiestos publicados (Pages)
+                               inkt index + inkt sign ▼   (clave privada: solo en un secreto de GitHub Actions)
+                  catalog/v1/index.json + manifiestos + versions.json + paquetes, cada uno con su .sig (Pages)
                                                  │
-                                                 ▼
+                                                 ▼   client verifica la firma (clave pública fija) y el sha256
                    Creative-Ink (importa tools/pkg/*; decide rutas, comandos y UI)
 ```
 
@@ -80,6 +83,7 @@ Memorandum-tex/
 - Los paquetes de `tools/pkg/*` importan **solo la biblioteca estándar**. `contract`, `params`, `compat` y `bundle` no
   usan la red ni ejecutan procesos; solo `client` usa la red.
 - Creative-Ink consume el catálogo y la librería; nunca lee este repositorio con `git clone` ni con la API de GitHub.
+- Nada de la cadena ejecuta código de una plantilla: sin `.latexmkrc`, sin `--shell-escape` y sin scripts (decisión 15).
 
 ## 3. Contrato (tabla viva)
 
@@ -88,17 +92,19 @@ gana el contrato.
 
 | Artefacto | Productor → consumidor | Forma y semántica | Contrato | Estado |
 |-----------|------------------------|-------------------|----------|--------|
-| `template.json` | Autor → `inkt`, Creative-Ink | `id` kebab-case = carpeta; `version` semver; `build` (`engines` con `pdflatex` y `xelatex`, `defaultEngine: pdflatex`, `bibliography: bibtex`, `shellEscape`); `requires`; `components`; `parameters` (`string`, `boolean`, `enum`, `date`, `list`); `modes` con `completo`. Campos desconocidos: aviso al validar, ignorados por los clientes | §3–§5 | Especificado, con esquema y fixtures |
+| `template.json` | Autor → `inkt`, Creative-Ink | `id` kebab-case = carpeta; `version` semver; `build` (`engines` con `pdflatex` y `xelatex`, `defaultEngine: pdflatex`, `bibliography: bibtex`, `shellEscape` siempre `false` en v1); `requires`; `components`; `parameters` (`string`, `boolean`, `enum`, `date`, `list`); `modes` con `completo`; `license` SPDX con `MIT-0`. Campos desconocidos: aviso al validar, ignorados por los clientes | §3–§5 | ✅ validado por `pkg/contract` (48 casos) |
 | Manifiesto publicado | CI → Creative-Ink | El del repositorio sin `$schema` ni `components`, más `dist {url, sha256, size, publishedAt}` | §6 | ⏳ M2 (generador), M7 (real) |
 | `versions.json` | CI → Creative-Ink | Versiones publicadas, más nueva primero; rutas relativas al archivo | §6 | ⏳ M2 |
 | `index.json` | CI → Creative-Ink | Última versión de cada plantilla y lista de paquetes; ≤ 1 MB; rutas relativas a la URL del índice | §7 | ⏳ M2 (fixture), M7 (real) |
-| `packs/<id>.json` | Repositorio → Creative-Ink | 1–100 `{id, version?}`; sin zip propio; `todo` reservado y generado | §8 | 4 paquetes escritos |
-| Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Reglas B1–B9: una raíz = id; segmentos `^[A-Za-z0-9._-]+$`; sin enlaces; lista de extensiones + `LICENSE` y `.creative-ink-meta`; ≤ 2000 archivos, 200 MB y 100:1; reproducible | §9 | 14 casos en fixtures; ⏳ M2 |
+| `<archivo>.sig` | `inkt sign` (CI) → `client` | `{keyId, algorithm: ed25519, signature}` sobre los bytes exactos de cada JSON del catálogo; obligatoria en el oficial | §7.1 | ⏳ M2 pasos 6–8; clave real en M7 |
+| `packs/<id>.json` | Repositorio → Creative-Ink | 1–100 `{id, version?}`; sin zip propio; `todo` reservado y generado | §8 | ✅ 4 paquetes, validados por `pkg/contract` |
+| Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Reglas B1–B10: una raíz = id; segmentos `^[A-Za-z0-9._-]+$`; sin enlaces ni colisiones por mayúsculas; lista de extensiones + `LICENSE` y `.creative-ink-meta`; rc de latexmk rechazados en cualquier forma; ≤ 2000 archivos, 200 MB y 100:1; reproducible | §9 | 16 casos en fixtures; ⏳ M2 paso 5 |
 | `.creative-ink-meta` del bundle | `inkt bundle` → Creative-Ink | Exactamente `{"version": 1, "mainFile": "<entry>"}` (`core.ProjectMeta` de Creative-Ink) | §9 B7 | Especificado |
-| `ink-params.tex` | Librería → plantilla | Dos líneas de cabecera y `\def\<macro>{valor}` en el orden del manifiesto; `EscapeTeX` igual a `core.EscapeTeX` | §10 | Salida exacta en fixtures |
-| Errores de parámetros | Librería → Creative-Ink | Códigos `unknown`, `required`, `type`, `enum`, `length`, `items`, por campo | §4.3 | 10 casos en fixtures |
-| Macros de modo | Creative-Ink → plantilla | `\borrador` y `\SoloCapitulo` (nombres fijos, los usa `ci compile`) | §5 | Especificado; ⏳ M3 en componentes |
-| Librería Go | Este repo → Creative-Ink | `client`, `params`, `compat`, `bundle`, `contract`; errores tipados de §13 | §13 | ⏳ M2 |
+| `ink-params.tex` | Librería → plantilla | Dos líneas de cabecera y `\def\<macro>{valor}` en el orden del manifiesto; `EscapeTeX` igual a `core.EscapeTeX` | §10 | ✅ `pkg/params`, 2 salidas exactas |
+| Errores de parámetros | Librería → Creative-Ink | Códigos `unknown`, `required`, `type`, `enum`, `length`, `items`, por campo | §4.3 | ✅ `pkg/params`, 10 casos |
+| Estado de compatibilidad | Librería → Creative-Ink | `ready`, `missing-packages`, `missing-engine`, `blocked` (`--shell-escape`), `incompatible`; gana el más grave | integración §7 | ✅ `pkg/compat` |
+| Macros de modo | Creative-Ink → plantilla | `\borrador` y `\SoloCapitulo` (nombres fijos, los usa `ci compile`) | §5 | Especificado; probado en `ok-minima`; ⏳ M3 en componentes |
+| Librería Go | Este repo → Creative-Ink | `contract`, `params`, `compat`, `bundle`, `catalogtest`, `client`; errores tipados de §13 (con `ErrSignature`) | §13 | ✅ 3 de 6 paquetes; ⏳ M2 pasos 4–8 |
 
 ## 4. Subsistemas
 
@@ -112,23 +118,35 @@ Fuente única de paletas, motor, comandos e instituciones. En el repositorio viv
 declarados a `src/Latex/ink/` del bundle. Una institución nueva es una carpeta en `shared/instituciones/` con su
 `institucion.tex` (textos) y `logos/`; ninguna plantilla escribe a mano "UNAM" o "FES Acatlán".
 
-### 4.3 Parámetros y modos (⏳ M1)
+### 4.3 Parámetros y modos (✅ especificado en M1, implementado en `pkg/params` el 2026-11-11)
 Variantes como booleanos (`portada`), opciones como `enum` (`color`, `tamano`), datos como `string`/`date`/`list`.
 Orden obligatorio en `main.tex`: `\InputIfFileExists{ink-params}{}{}` → `\providecommand` con los valores por
 defecto → resto del preámbulo. Modos: `completo`, `rapido`, `borrador`, `capitulo` (solo los que la plantilla declara).
+Flujo: `params.ParseAssignments` (palabras `clave=valor`) → `params.Resolve` (valor del usuario, nombre del proyecto,
+valor por defecto; errores por campo) → `params.RenderInkParams` (el archivo exacto). Comprobado en LaTeX real con
+`ok-minima` en los tres motores y los modos borrador y capítulo (2026-11-11).
 
 ### 4.4 Motores y bibliografía (⏳ M3)
 `ink-motor.tex` decide con iftex. Por defecto pdfLaTeX + natbib/apalike + BibTeX; XeLaTeX y LuaLaTeX donde
 `build.engines` los liste; biblatex + Biber solo como parámetro `bibliografia` de las plantillas que lo ofrezcan.
 
-### 4.5 Herramienta `inkt` y librería (⏳ M2)
-Sustituye a los dos Makefiles y a los scripts de Python de los repositorios de origen. Comandos previstos: `validate`,
-`index`, `bundle`, `new`, `check bib|labels|refs`, `format`, `diff`, `clean`. La librería se diseña en
-`docs/integracion-creative-ink.md` §5.
+### 4.5 Herramienta `inkt` y librería (M2 en curso: pasos 1–3 de 8)
+Sustituye a los dos Makefiles y a los scripts de Python de los repositorios de origen.
+- **Librería** (`tools/pkg/`, la importa Creative-Ink): ✅ `contract`, ✅ `params`, ✅ `compat`; ⏳ `bundle`,
+  `catalogtest`, `client`. Organización, estado y API en `docs/integracion-creative-ink.md` §5.
+- **CLI `inkt`** (solo para este repositorio y su CI): `validate`, `bundle`, `index` y `sign` en M2; `new`,
+  `check bib|labels|refs`, `format`, `diff` y `clean` en M6.
+- **Reglas de implementación:** solo biblioteca estándar; errores compartidos en `contract`; ninguna función
+  ejecuta procesos y solo `client` usa la red; cada regla del contrato tiene casos en `tools/fixtures/data/` y un test
+  que comprueba que ningún caso queda sin probar.
 
 ### 4.6 Publicación y catálogo (⏳ M7)
-Tag `<id>-v<versión>` (lo crea el humano) → CI valida, empaqueta, sube el zip a la Release y regenera
-`catalog/v1/` en GitHub Pages. Escalabilidad estimada en `docs/integracion-creative-ink.md` §3.2.
+Tag `<id>-v<versión>` (lo crea el humano) → CI valida, empaqueta, sube el zip a la Release, regenera `catalog/v1/` y
+**firma cada JSON** con la clave privada del secreto de GitHub Actions (`inkt sign`) antes de publicarlo en GitHub
+Pages. Escalabilidad estimada en `docs/integracion-creative-ink.md` §3.2.
+- **Antes de la primera publicación:** el humano genera el par de claves Ed25519 y guarda la privada en el secreto.
+  La pública entra en `client.Official` y se publica una versión de la librería que ya la conozca.
+- **Rotación:** contrato §7.1.
 
 ### 4.7 Kit de seguimiento de la tesis (⏳ M6)
 Extraído de TesisUrbanismo: plantillas de issues (revisión de capítulo, figura o tabla, bibliografía, error de LaTeX),
@@ -157,7 +175,8 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 
 ### Decisiones del usuario (2026-11-11)
 12. **El catálogo de prueba es un paquete Go** (`tools/pkg/catalogtest`): construye en una carpeta temporal el índice,
-    los manifiestos publicados, los paquetes y los 14 zips de `tools/fixtures/data/`, y devuelve un `httptest.Server`. No se
+    los manifiestos publicados, los paquetes y los 14 zips (16 desde la revisión de seguridad del 2026-11-11, y firmado
+    con una clave efímera) de `tools/fixtures/data/`, y devuelve un `httptest.Server`. No se
     guardan zips ni catálogos generados en git; Creative-Ink lo llama desde sus tests.
 13. **La licencia se decide antes de la primera publicación (M7)**, porque B6 exige `LICENSE` en cada bundle. En M8
     queda solo la identidad (texto de muestra).
@@ -201,8 +220,11 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
     de resolución, 2 salidas exactas de `ink-params.tex` y 9 de escapado.
   - [x] Paso 3 (2026-11-11): `pkg/compat` (`Evaluate`, `EvaluateJSON`, `UpdateAvailable`). Severidad: incompatible >
     blocked > missing-engine > missing-packages > ready. `--shell-escape` siempre da `blocked`. 7 tests.
-  - [ ] Paso 4: validación de carpeta (V30–V39). · [ ] Paso 5: `pkg/bundle`.
-  - [ ] Paso 6: `pkg/catalogtest` + `inkt index`. · [ ] Paso 7: `pkg/client`. · [ ] Paso 8: `cmd/inkt`.
+  - [ ] Paso 4: validación de carpeta (V30–V39, 27 casos generados al vuelo).
+  - [ ] Paso 5: `pkg/bundle` (empaquetado reproducible, `LICENSE` desde `LICENSES/`, `SafeExtract` B1–B10, 16 casos).
+  - [ ] Paso 6: `pkg/catalogtest` + generación del índice + firma Ed25519 de cada JSON con clave efímera.
+  - [ ] Paso 7: `pkg/client` (firma obligatoria en el oficial, `sha256`, caché ETag, sin conexión, `Get`, `GetPack`).
+  - [ ] Paso 8: `cmd/inkt` (`validate`, `bundle`, `index`, `sign`, `keygen`) y binario de comprobación.
 - [ ] **M3 — Componentes compartidos:** motor, base, paletas, comandos, institución UNAM-FES con logos.
 - [ ] **M4 — Piloto `ensayo`** de punta a punta (el humano lo compila con los tres motores).
 - [ ] **M5 — Migración del resto** (§5).
@@ -273,7 +295,8 @@ Paquete `todo`: se genera al publicar con todas las plantillas.
 | Área | Qué hay que dominar |
 |------|---------------------|
 | LaTeX | iftex, inputenc/fontenc frente a fontspec, babel `spanish`, natbib/apalike, biblatex/biber, beamer, tcolorbox, TikZ, `\includeonly`, `\InputIfFileExists`, `\providecommand` |
-| Go | `encoding/json`, `archive/zip`, `crypto/sha256`, `net/http` (timeouts, ETag, proxy), `context`, `path/filepath` frente a `path`, `httptest`, `-race`, `GOOS` |
+| Go | `encoding/json` (y `json.Decoder.Token` para ubicar líneas), `archive/zip`, `crypto/sha256`, `crypto/ed25519`, `embed`, `io/fs`, `net/http` (timeouts, ETag, proxy), `context`, `path/filepath` frente a `path`, `httptest`, `-race`, `GOOS` |
+| Seguridad | Zip slip, bombas zip, colisiones por mayúsculas en macOS/Windows, `.latexmkrc` como código Perl, `--shell-escape`, firma de catálogos y custodia de claves |
 | Publicación | GitHub Releases (assets), GitHub Pages con Actions, tags anotados |
 | Creative-Ink | Su `docs/MAP.md` §1, §4.3.6 (`ci`) y §4.6 (configuración y confianza), y `internal/core/templates.go` |
 
@@ -285,5 +308,7 @@ Paquete `todo`: se genera al publicar con todas las plantillas.
 | Commits | Los que la IA propone, con `git add <archivos>` explícitos |
 | Compilar una plantilla en local | `latexmk -pdf main.tex` (o `-xelatex`, `-lualatex`) dentro de `src/` |
 | Paquetes de TeX | `tlmgr install <paquetes>` |
+| Verificar la librería | `cd tools && gofmt -l . && go vet ./... && go test -race ./...` (también los puede ejecutar la IA, con permiso) |
+| Clave de firma del catálogo (⏳ M7) | Generarla con `inkt keygen` (paso 8), guardar la privada **solo** en un secreto de GitHub Actions y borrarla del disco |
 | Publicar una versión (⏳ M7) | `git tag -a <id>-v<versión> -m "…"` y `git push origin <id>-v<versión>` |
 | Activar GitHub Pages (⏳ M7) | Settings → Pages → Source: GitHub Actions |

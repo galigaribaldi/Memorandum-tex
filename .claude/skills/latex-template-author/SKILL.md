@@ -24,6 +24,9 @@ define la skill `template-contract` (y `docs/contrato-plantillas.md` cuando exis
 3. **Compila sin Creative-Ink:** sin `ink-params.tex`, los `\providecommand` dan valores por defecto razonables.
 4. **Motor neutro:** pdfLaTeX por defecto, y también compila con XeLaTeX (Creative-Ink usa hoy `latexmk -xelatex`).
 5. **Sin institución escrita a mano:** "UNAM", "FES Acatlán" y los logos vienen de `shared/instituciones/`.
+6. **Nunca ejecuta código:** sin `--shell-escape` ni lo que lo necesita (externalización de TikZ, `minted`,
+   `\write18`), sin `.latexmkrc` y sin `{{TITULO}}` (V39, MAP decisión 15). Si la plantilla de origen lo usaba, se
+   rediseña sin ello; no se "marca como de confianza".
 
 ## Pasos para migrar una plantilla
 1. Lee la plantilla de origen completa (`main.tex`, `Latex/*`, `secciones/*`) y su entrada en `MAP §5`.
@@ -50,8 +53,10 @@ plantilla:
 grep -rnE '^[^%]*\\(input|include|includegraphics|bibliography|graphicspath)[^%]*\.\./' <ruta>/src   # V35, sin comentarios
 grep -rnE '\\usepackage(\[[^]]*\])?\{(inputenc|fontenc|lipsum|subfigure|epsfig)\}' <ruta>/src
 grep -rn 'UNAM\|FES Acatl' <ruta>/src --include=*.tex                 # textos institucionales a mano
-find <ruta> -name '* *' -o -name '.latexmkrc' -o -name 'latexmkrc' -o -type l -o -name '*.sh' -o -name 'Makefile'
+find <ruta> -name '* *' -o -iname '.latexmkrc' -o -iname 'latexmkrc' -o -type l -o -name '*.sh' -o -name 'Makefile'
 find <ruta> -name '*[!A-Za-z0-9._/-]*'                                 # nombres no ASCII
+find <ruta>/src | tr 'A-Z' 'a-z' | sort | uniq -d                       # V31/B10: colisiones por mayúsculas (vacío = bien)
+grep -rnE 'tikzexternalize|usetikzlibrary\{[^}]*external|\{minted\}|write18|ShellEscape|\{\{TIT(ULO|LE)\}\}' <ruta>/src   # V39
 grep -n 'InputIfFileExists{ink-params}' <ruta>/src/main.tex           # debe aparecer antes de los \providecommand
 ```
 Después, **el humano** compila: `latexmk -pdf main.tex` dentro de `src/`, y con `-xelatex` (y `-lualatex` si el

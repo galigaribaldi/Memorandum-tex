@@ -45,13 +45,17 @@ solo.
 ## 3. Reglas que el validador hace cumplir
 
 - Nada fuera de la carpeta de la plantilla: sin `../`, sin rutas absolutas, sin `\graphicspath` hacia arriba.
-- Sin `.latexmkrc`, sin enlaces simbólicos, sin Makefiles ni scripts de shell, sin Git LFS.
-- Nombres de archivo en ASCII, sin espacios y en kebab-case (`marco-teorico.tex`, no `Marco Teórico.tex`).
+- Sin `.latexmkrc` (en ninguna combinación de mayúsculas), sin enlaces simbólicos, sin Makefiles ni scripts de shell,
+  sin Git LFS.
+- Nombres de archivo en ASCII, sin espacios y en kebab-case (`marco-teorico.tex`, no `Marco Teórico.tex`), y sin dos
+  archivos que solo difieran en mayúsculas (`intro.tex` e `Intro.tex` son el mismo en macOS y Windows).
 - Fin de línea LF y UTF-8 (lo garantizan `.gitattributes` y `.editorconfig`).
 - Extensiones permitidas en `src/`: `tex sty cls bst bib bbx cbx lbx cfg def md txt json png jpg jpeg pdf eps svg otf ttf`.
 - Como máximo 2000 archivos y 200 MB por plantilla. Sin imágenes pesadas de ejemplo.
-- Sin `--shell-escape` salvo que `build.shellEscape` lo declare (y entonces la plantilla requiere confianza en
-  Creative-Ink).
+- **Sin `--shell-escape`, nunca** (`"shellEscape": false`). Permite que un `.tex` ejecute comandos en el equipo de
+  quien lo compila, y v1 del contrato lo prohíbe: Creative-Ink bloquea cualquier plantilla que lo pida. Eso descarta
+  la externalización de TikZ (`\usetikzlibrary{external}`), `minted`, `\write18` y similares (regla V39).
+- Sin los marcadores `{{TITULO}}` ni `{{TITLE}}`: el título es un parámetro con `"fromProjectName": true`.
 - Sin `lipsum`: el texto de muestra lo da el repositorio (⏳ M8).
 - Licencia (`NOTICE.md`):
   - **Plantillas:** `"license": "MIT-0"`. Si incluyes material de terceros (por ejemplo, la clase oficial de un

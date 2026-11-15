@@ -4,13 +4,17 @@ description: Contrato entre Memorandum-tex y Creative-Ink. Úsala para cualquier
 ---
 # Contrato de plantillas
 
-Lee primero: `CLAUDE.md`, `docs/MAP.md` §2–§3 y la especificación vigente: `docs/contrato-plantillas.md` (desde M1)
-o, mientras no exista, `docs/integracion-creative-ink.md` §4–§5. Si discrepan con esta skill, ganan ellos.
+Lee primero: `CLAUDE.md`, `docs/MAP.md` §2–§3 y la especificación vigente, `docs/contrato-plantillas.md`. Para lo que
+afecta a Creative-Ink, `docs/integracion-creative-ink.md` (§5 librería, §8 seguridad, §12 decisiones). Si discrepan con
+esta skill, ganan ellos.
 
 ## Contexto del proyecto (verifícalo antes de fiarte: puede haber cambiado)
-- Esquemas: `schema/template.schema.json`, `index.schema.json`, `pack.schema.json` (⏳ M1).
-- Librería: módulo `github.com/galigaribaldi/Memorandum-tex/tools`, paquetes en `tools/pkg/` (⏳ M2). Solo biblioteca
-  estándar; `go` ≤ la versión del `go.mod` de Creative-Ink (hoy 1.26).
+- Esquemas: `schema/template.schema.json`, `index.schema.json`, `versions.schema.json`, `pack.schema.json`.
+- Librería: módulo `github.com/galigaribaldi/Memorandum-tex/tools` (`go 1.22`, solo biblioteca estándar; `go` ≤ la
+  versión del `go.mod` de Creative-Ink, hoy 1.26). Estado de cada paquete: `docs/integracion-creative-ink.md` §5.2
+  (✅ `contract`, `params`, `compat`; ⏳ `bundle`, `catalogtest`, `client`, `cmd/inkt`).
+- Fixtures: `tools/fixtures/data/` (incrustados con `embed.FS` en el paquete `tools/fixtures`), ver su README.
+- Errores compartidos: todos en `tools/pkg/contract/errors.go` (`contract.Err*`); ningún paquete define los suyos.
 - Consumidor: Creative-Ink (`/Users/hcabrera/Documents/Personal_Documents/Creative-Ink`). Relevante allí:
   `creative-ink/internal/core/templates.go` (límites 2000 archivos y 200 MB, `{{TITULO}}`, `.creative-ink-meta`),
   `creative-ink/internal/ci/registry.go` (comandos `ci`), `docs/MAP.md` §4.6 (configuración por capas y confianza).
@@ -26,6 +30,12 @@ o, mientras no exista, `docs/integracion-creative-ink.md` §4–§5. Si discrepa
    corrupto, un checksum distinto o una ruta insegura son errores tipados.
 5. **Seguridad por defecto:** nada descargado se ejecuta ni se confía; la extracción rechaza lo que el validador
    rechaza al publicar (defensa en profundidad).
+   - **Sin `--shell-escape`:** nunca en v1 (`compat` → `blocked`). No reintroduzcas "requiere confianza": en
+     Creative-Ink una carpeta sin `.latexmkrc` ya es de confianza.
+   - **Firma:** cada JSON del catálogo se firma con Ed25519 (contrato §7.1). Un JSON nuevo del catálogo necesita su
+     `.sig`, y `client` lo verifica.
+   - **Revisión externa:** si un agente o una persona encuentra un hueco de seguridad, primero se corrige el contrato y
+     sus fixtures, y después el código.
 
 ## Pasos para añadir o cambiar un campo
 1. Decide si es compatible (§Principios 3). Si no lo es, pide decisión al humano antes de seguir.

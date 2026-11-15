@@ -11,7 +11,8 @@ Método de trabajo: `WORKFLOW_BLUEPRINT.md` (Tríada, contrato vivo, deuda como 
 - **Herramientas:** **Go, solo biblioteca estándar** (`tools/`, módulo `github.com/galigaribaldi/Memorandum-tex/tools`).
   Python solo para extensiones concretas futuras, nunca en el camino principal.
 - **Manifiestos:** JSON con JSON Schema (`template.json`, `index.json`, paquetes).
-- **Publicación:** catálogo en GitHub Pages (`catalog/v1/`), bundles zip en GitHub Releases (tag `<id>-v<versión>`).
+- **Publicación:** catálogo en GitHub Pages (`catalog/v1/`, **cada JSON firmado con Ed25519**), bundles zip en GitHub
+  Releases (tag `<id>-v<versión>`). La clave privada vive solo en un secreto de GitHub Actions.
 - **Prohibido:** Makefiles o scripts de shell como herramienta de construcción; Git LFS; dependencias Go externas;
   `.latexmkrc` dentro de una plantilla; rutas `../` que salgan de la plantilla; nombres de archivo con espacios o acentos.
 

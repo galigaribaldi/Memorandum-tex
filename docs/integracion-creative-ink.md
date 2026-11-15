@@ -1,11 +1,14 @@
 # Integración Memorandum-tex ↔ Creative-Ink: plan y requerimientos
 
-> **Estado:** borrador v0 (2026-11-10). Lo escribió el lado de Memorandum-tex para que el agente de IA de
-> Creative-Ink lo analice **antes** de diseñar la descarga de plantillas.
-> **Precedencia:** para el formato del catálogo, los manifiestos y los bundles, este documento manda hasta que exista
-> `docs/contrato-plantillas.md` (fase M1), que lo reemplaza. Para todo lo que pasa dentro de Creative-Ink (rutas,
-> IPC, UI, comandos `ci`, seguridad del editor) mandan su `CLAUDE.md` y su `docs/MAP.md`. Aquí solo hay
-> **requerimientos y propuestas** para ese lado.
+> **Estado:** v1, revisado de punta a punta el 2026-11-12, con M0 y M1 hechos y M2 en curso (pasos 1–3 de 8). Lo
+> escribe el lado de Memorandum-tex para que el agente de IA de Creative-Ink diseñe la descarga de plantillas.
+> **Precedencia:**
+> - **Formato del catálogo, manifiestos, bundles y firma:** manda **`docs/contrato-plantillas.md` (contrato v1)**.
+>   Este documento lo resume y explica cómo usarlo desde Creative-Ink.
+> - **Lo que pasa dentro de Creative-Ink** (rutas, IPC, UI, comandos `ci`, seguridad del editor): mandan su
+>   `CLAUDE.md` y su `docs/MAP.md`. Aquí solo hay **requerimientos y propuestas** para ese lado.
+> **Cómo leerlo:** §5 dice qué está implementado y qué falta en la librería; §8 son las reglas de seguridad; §12, las
+> decisiones del programador; §14, la bitácora de cambios.
 > **Reglas:** este documento es para analizar. No implementes nada en Creative-Ink sin la aprobación de su
 > programador y sigue su ciclo por secciones (análisis → decisiones → implementación → verificación → Tríada).
 
@@ -34,9 +37,9 @@
 | Contrato v1: `template.json`, `index.json`, paquetes, bundle, `ink-params.tex` | Dónde y cómo se guarda cada plantilla dentro de `My-Creative-Ink-Repository` |
 | Las plantillas, sus manifiestos, README, CHANGELOG y licencia | Comandos `ci` (registro), ayuda, guía y Tab |
 | La **librería Go** (`tools/pkg/…`): leer el catálogo, validar, resolver parámetros, evaluar compatibilidad, descargar, verificar y extraer de forma segura | Detectar motores y paquetes de TeX (`system.FindBinary`, `kpsewhich`) y pasárselos a la librería |
-| Publicar: GitHub Pages (catálogo) y Releases (bundles) | Política de confianza (nunca confiar en algo descargado) y claves de configuración |
-| Fixtures de prueba sin red | IPC, eventos y, si se decide, la galería en la UI |
-| Validador del contrato en CI | `go get` / `replace` del módulo (lo ejecuta el programador) |
+| Publicar: GitHub Pages (catálogo **firmado**) y Releases (bundles) | Política de confianza (confiar solo en las plantillas propias del usuario; nunca en algo descargado) y claves de configuración |
+| Fixtures de prueba sin red (`tools/fixtures`) y un catálogo de prueba servible (`pkg/catalogtest`) | IPC, eventos y, si se decide, la galería en la UI |
+| Validador del contrato en CI; custodia de la clave de firma (el humano, en un secreto de GitHub Actions) | Importar el módulo: `go.work` local mientras se desarrolla y `go get` al publicar (lo ejecuta el programador) |
 
 ## 3. Distribución y escalabilidad
 
@@ -47,11 +50,13 @@ Catálogo (GitHub Pages, estático y con CDN)
 https://galigaribaldi.github.io/Memorandum-tex/
 ├── index.html                                   ← galería para humanos (más adelante)
 └── catalog/v1/                                  ← "v1" = schemaVersion del contrato
-    ├── index.json                               ← resumen ligero: plantillas + paquetes
-    ├── templates/<id>/versions.json             ← versiones publicadas de esa plantilla
-    ├── templates/<id>/<version>/template.json   ← manifiesto publicado (incluye "dist")
-    ├── templates/<id>/<version>/preview.png     ← miniatura (≤ 200 KB)
-    └── packs/<pack-id>.json                     ← definición de un paquete
+    ├── index.json        + index.json.sig       ← resumen ligero: plantillas + paquetes
+    ├── templates/<id>/versions.json      + .sig ← versiones publicadas de esa plantilla
+    ├── templates/<id>/<version>/template.json + .sig ← manifiesto publicado (incluye "dist")
+    ├── templates/<id>/<version>/preview.png     ← miniatura (≤ 200 KB, sin firma: solo se muestra)
+    └── packs/<pack-id>.json              + .sig ← definición de un paquete
+
+Cada `<archivo>.sig` es la firma Ed25519 de los bytes exactos del JSON (contrato §7.1).
 
 Bundles (GitHub Releases, un tag por plantilla y versión)
 https://github.com/galigaribaldi/Memorandum-tex/releases/download/<id>-v<version>/<id>-<version>.zip
@@ -69,15 +74,21 @@ https://github.com/galigaribaldi/Memorandum-tex/releases/download/<id>-v<version
 | `index.json` | La librería acepta 1 MB como máximo | ~600 B por plantilla → 1000 plantillas ≈ 600 KB (Pages lo sirve comprimido, ~100 KB) | Amplio. Si se acerca, se parte por categoría (`index-<categoria>.json`) sin romper v1 |
 | Sitio de Pages | 1 GB publicado, ~100 GB/mes de tráfico (límite blando) | Solo JSON y miniaturas: < 50 MB con cientos de plantillas | Amplio, porque los zips no pasan por Pages |
 | Assets de Releases | 2 GB por archivo | Un bundle típico < 5 MB; tesis < 50 MB (sin imágenes pesadas) | Amplio. La librería limita a 200 MB, como `copyTemplate` |
-| Peticiones por consulta | — | `list` = 1 petición (con ETag: 304 si no cambió); `info` = 1; descarga = 1 + 1 zip | Mínimo |
+| Peticiones por consulta | — | `list` = 2 (índice y su `.sig`; con ETag, 304 si no cambió); `info` = 2; descarga = 2 + 1 zip | Mínimo |
 
 ## 4. Contrato v1 (borrador)
 
-> **Reemplazado el 2026-11-10 por `docs/contrato-plantillas.md` (M1), que es ahora la fuente de verdad.** Esta
-> sección se conserva como contexto del análisis. Las diferencias están en §14 del contrato; las que más afectan a
-> Creative-Ink son: `.creative-ink-meta` lo genera el bundle con solo `version` y `mainFile`; hay `versions.json`;
-> los errores de parámetros tienen códigos estables (`unknown`, `required`, `type`, `enum`, `length`, `items`); y las
-> rutas del zip rechazan `C:` y `\` en todos los sistemas.
+> **Reemplazado el 2026-11-10 por `docs/contrato-plantillas.md` (M1), que es ahora la fuente de verdad. No
+> implementes a partir de esta sección:** se conserva solo como contexto del análisis y sus ejemplos tienen valores
+> viejos (`"license": "MIT"`, `shellEscape` como opción). Las diferencias están en §14 del contrato. Las que más
+> afectan a Creative-Ink:
+> - **Bundle:** `.creative-ink-meta` lo genera el bundle con solo `version` y `mainFile`.
+> - **Versiones:** existe `versions.json`.
+> - **Errores de parámetros:** tienen códigos estables (`unknown`, `required`, `type`, `enum`, `length`, `items`).
+> - **Rutas del zip:** se rechazan `C:`, `\` y las colisiones por mayúsculas en todos los sistemas.
+> - **Licencia:** las plantillas son `MIT-0`.
+> - **`shellEscape: true`:** está **bloqueado**.
+> - **Firma:** cada JSON del catálogo va firmado (§7.1).
 
 ### 4.1 Manifiesto `template.json` (en el repositorio, por plantilla)
 
@@ -282,20 +293,53 @@ ensayo-1.0.0.zip
   - **Git:** `go.work` y `go.work.sum` van al `.gitignore` de Creative-Ink.
   - **Al publicar:** en el `go.mod` queda solo `require github.com/galigaribaldi/Memorandum-tex/tools vX.Y.Z`.
 
-| Paquete | Responsabilidad | Ejecuta procesos | Usa la red |
-|---------|-----------------|------------------|------------|
-| `pkg/contract` | Tipos (`Manifest`, `Index`, `Pack`, `Parameter`, `Dist`), `Validate`, `SchemaVersion` | No | No |
-| `pkg/params` | `Resolve(manifest, values) → Values` (valida tipos, obligatorios, `enum`; errores por campo), `RenderInkParams`, `EscapeTeX` | No | No |
-| `pkg/compat` | `Evaluate(manifest, Env) → Report{Status, Missing, Hints}` | No: Creative-Ink le pasa `Env` | No |
-| `pkg/bundle` | `VerifySHA256`, `SafeExtract(zip, dst, Limits)` con la lista permitida de §4.5 | No | No |
-| `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get` (individual), `GetPack`; caché con ETag; resultado offline | No | Sí (HTTPS) |
-| `pkg/catalogtest` | Solo para tests: construye el catálogo de prueba de `tools/fixtures/data/` y lo sirve con `httptest.Server` | No | Solo local (`127.0.0.1`) |
+### 5.1 Organización del repositorio (lo que le importa a Creative-Ink)
 
-**API propuesta** (puede ajustarse en M2; la versión final se documenta en `docs/contrato-plantillas.md`):
+```
+Memorandum-tex/
+├── docs/contrato-plantillas.md   ← EL contrato v1 (fuente de verdad del formato)
+├── docs/integracion-creative-ink.md ← este documento
+├── schema/*.json                 ← JSON Schema (solo ayuda al editor; la validación real es la de pkg/contract)
+├── packs/*.json                  ← paquetes del catálogo oficial
+├── templates/<cat>/<id>/         ← ⏳ M4–M6: las plantillas
+├── shared/                       ← ⏳ M3: componentes que se copian dentro de cada bundle
+├── LICENSE, LICENSES/, NOTICE.md ← MIT (librería) y MIT-0 (plantillas)
+└── tools/                        ← EL MÓDULO GO QUE IMPORTA CREATIVE-INK
+    ├── go.mod                    ← github.com/galigaribaldi/Memorandum-tex/tools, go 1.22, sin dependencias
+    ├── fixtures/                 ← ✅ datos de prueba incrustados (embed.FS): fixtures.FS(), fixtures.Dir()
+    │   └── data/                 ← plantillas de prueba, casos de parámetros, casos inválidos, casos de bundles
+    ├── internal/fixturetest/     ← ✅ ayudas de test internas (Creative-Ink no puede ni necesita importarlas)
+    ├── pkg/contract/             ← ✅ tipos, errores compartidos (contract.Err*), validación V01–V20 y V50–V52
+    ├── pkg/params/               ← ✅ clave=valor → valores → ink-params.tex
+    ├── pkg/compat/               ← ✅ ¿se puede usar en este equipo? (ready … blocked)
+    ├── pkg/bundle/               ← ⏳ paso 5: empaquetar (reproducible), verificar sha256, extraer de forma segura
+    ├── pkg/catalogtest/          ← ⏳ paso 6: catálogo de prueba firmado servido con httptest
+    ├── pkg/client/               ← ⏳ paso 7: índice, manifiestos, firmas, caché, descargas individuales y paquetes
+    └── cmd/inkt/                 ← ⏳ paso 8: CLI de este repositorio (validate, bundle, index, sign); Creative-Ink no la usa
+```
+
+### 5.2 Paquetes y estado
+
+| Paquete | Responsabilidad | Estado | Procesos | Red |
+|---------|-----------------|--------|----------|-----|
+| `fixtures` | `FS()` con los datos de prueba incrustados; `Dir()` con su ruta en disco cuando existe | ✅ 2026-11-11 | No | No |
+| `pkg/contract` | Tipos del contrato; errores compartidos; `ValidateManifest(data, Options) → (*Manifest, Report)`; `ValidatePack`; utilidades (`ValidID`, `ValidRelPath`, `ParseSemver`, `ParseLicense`…) | ✅ 2026-11-11 | No | No |
+| `pkg/params` | `ParseAssignments`, `Resolve(m, Input) → (*Resolved, error)`, `RenderInkParams`, `EscapeTeX` | ✅ 2026-11-11 | No | No |
+| `pkg/compat` | `Evaluate(m, Env) → Report`, `EvaluateJSON`, `UpdateAvailable` | ✅ 2026-11-11 | No: Creative-Ink le pasa `Env` | No |
+| `pkg/bundle` | `VerifySHA256`, `SafeExtract(zip, dst, Limits)` con las reglas B1–B10 | ⏳ paso 5 | No | No |
+| `pkg/catalogtest` | Solo para tests: construye y **firma** (con una clave efímera) el catálogo de prueba y lo sirve con `httptest.Server` | ⏳ paso 6 | No | Solo local (`127.0.0.1`) |
+| `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get`, `GetPack`; **verificación de firmas**; caché con ETag; resultado sin conexión | ⏳ paso 7 | No | Sí (HTTPS) |
+
+**API.** Las partes de `params` y `compat` son las **firmas reales**. La parte de `client` es una **propuesta**: se
+cierra en el paso 7 y se actualizará aquí.
 
 ```go
+// PROPUESTA (se cierra en el paso 7):
 c := client.New(client.Options{
-    Sources:   []client.Source{{ID: "memorandum-tex", IndexURL: "https://galigaribaldi.github.io/Memorandum-tex/catalog/v1/index.json"}},
+    Sources:   []client.Source{
+        client.Official,  // fijo en la librería: URL del catálogo oficial + sus claves públicas (firma obligatoria)
+        {ID: "otro", IndexURL: "https://…/catalog/v1/index.json", PublicKeys: nil}, // tercero sin clave = "sin firma"
+    },
     HTTP:      httpClient,      // Creative-Ink: timeouts y proxy (http.ProxyFromEnvironment)
     CacheDir:  cacheDir,        // Creative-Ink decide (p. ej. <UserConfigDir>/creative-ink/cache/catalog)
     UserAgent: "creative-ink/<versión>",
@@ -324,6 +368,7 @@ rep := compat.Evaluate(m, compat.Env{
 rep, m := compat.EvaluateJSON(publishedManifestJSON, env) // valida (OriginPublished) y evalúa; inválido = incompatible
 compat.UpdateAvailable("1.0.0", "1.1.0")                   // true
 
+// PROPUESTA (se cierra en el paso 7):
 res, err := c.Get(ctx, client.GetRequest{
     ID: "ensayo", Version: "",          // individual
     Dest: absDir,                       // Creative-Ink decide: debe NO existir o estar vacía
@@ -342,11 +387,13 @@ results, err := c.GetPack(ctx, client.PackRequest{ID: "academico", DestRoot: abs
     temporal hermana de `Dest` y se hace `os.Rename` al final.
   - Nunca escribe fuera de `Dest`/`DestRoot` ni de `CacheDir`, y nunca sobrescribe: `Dest` existente y no vacío da
     `ErrDestExists`.
-  - Verifica el `sha256` **antes** de extraer y respeta límites: índice ≤ 1 MB, manifiesto ≤ 256 KB, bundle ≤ 200 MB.
+  - Verifica la **firma** de cada JSON de un catálogo firmado y el `sha256` del zip **antes** de extraer, y respeta
+    límites: índice ≤ 1 MB, manifiesto ≤ 256 KB, bundle ≤ 200 MB.
 - **Seguridad:** no ejecuta procesos ni sigue rutas peligrosas. Solo acepta HTTPS (HTTP solo con un flag explícito
-  para tests con `httptest`).
-- **Errores tipados:** `ErrOffline`, `ErrNotFound`, `ErrChecksum`, `ErrUnsafePath`, `ErrForbiddenFile`,
-  `ErrBundleLayout`, `ErrTooLarge`, `ErrUnsupportedSchema`, `ErrDestExists`, `*params.Error` (contrato §13).
+  para tests con `httptest`). Nunca usa la red por su cuenta: solo cuando Creative-Ink llama a una función.
+- **Errores tipados** (todos en `contract`, comparables con `errors.Is`): `ErrOffline`, `ErrNotFound`,
+  `ErrChecksum`, `ErrSignature`, `ErrUnsafePath`, `ErrForbiddenFile`, `ErrBundleLayout`, `ErrTooLarge`,
+  `ErrUnsupportedSchema`, `ErrDestExists`, además de `*params.Error` (contrato §13).
 - **Concurrencia:** es segura (`go test -race`); `GetPack` usa como mucho 3 descargas a la vez.
 - **Plataformas:** se verifica con `GOOS=windows`, `GOOS=linux` y `GOOS=darwin` (`go vet`).
 
@@ -378,7 +425,7 @@ results, err := c.GetPack(ctx, client.PackRequest{ID: "academico", DestRoot: abs
 | RNF-3 | Nunca usar `api.github.com` |
 | RNF-4 | No bloquear la UI: descargas cancelables (Ctrl+C / "Detener"), con progreso; reutilizar el streaming y el `OutputSpool` de la Terminal CI |
 | RNF-5 | La librería se importa sin dependencias transitivas (solo biblioteca estándar) |
-| RNF-6 | Tests sin red: fixtures de Memorandum-tex + `httptest.Server` |
+| RNF-6 | Tests sin red: `fixtures.FS()` y `catalogtest` (catálogo firmado servido con `httptest.Server`) de Memorandum-tex |
 | RNF-7 | Compatibilidad hacia adelante: campos desconocidos se ignoran; `schemaVersion` desconocida = plantilla `incompatible` |
 
 ## 7. Estados de compatibilidad (`compat.Status`)
@@ -446,7 +493,7 @@ Siguiendo el registro (`internal/ci/registry.go`), un solo comando `templates`:
 | `templates remove <id>` | Quita una plantilla descargada (nunca proyectos) | — |
 | `templates refresh` | Vuelve a descargar el índice | RQ-8 |
 | `templates new <id> <nombre> [clave=valor …]` | Crea un proyecto desde una plantilla descargada | RQ-4, RQ-10, RQ-11 |
-| `templates sources [add\|remove <url>]` | Gestiona `templates.sources` | RQ-9 |
+| `templates sources [add <url> [--clave <pública>]\|remove <url>]` | Gestiona `templates.sources` (solo en la capa del usuario); sin clave, la fuente queda como "sin firma" | RQ-9 |
 
 ## 10. Pruebas y fixtures (los entrega Memorandum-tex en M1)
 
@@ -468,10 +515,12 @@ tools/fixtures/data/
   en los tres sistemas.
 - **Catálogo servible (⏳ M2, decidido el 2026-11-11):** no habrá una carpeta generada en git.
   - **Qué es:** el paquete `tools/pkg/catalogtest` construye el catálogo completo en una carpeta temporal (índice,
-    manifiestos publicados, `versions.json`, paquetes y los 14 zips) y devuelve un `httptest.Server`.
+    manifiestos publicados, `versions.json`, paquetes, los 16 zips y sus `.sig`) y devuelve un `httptest.Server`.
+  - **Firma de prueba:** firma el catálogo con una **clave efímera** generada en cada test y expone su clave pública,
+    para que Creative-Ink pruebe también los casos de firma ausente o alterada.
   - **Para qué sirve:** con él, Creative-Ink prueba `ci templates …` de punta a punta sin red, llamándolo desde sus
-    tests: `srv := catalogtest.NewServer(t)` y `srv.IndexURL()`.
-  - **Pendiente:** la firma final se fija en M2.
+    tests. La forma prevista es `srv := catalogtest.NewServer(t)`, `srv.IndexURL()` y `srv.PublicKey()`; la API
+    definitiva se fija en el paso 6 de M2.
 - **Ya utilizable:** `params/escape-cases.json` sirve desde hoy para un test de `core.EscapeTeX` en Creative-Ink. Sus
   casos coinciden con su implementación actual (`repository.go`).
 
@@ -483,7 +532,7 @@ tools/fixtures/data/
 |------|------|-----|------------|
 | M0 | M | Gobierno: `CLAUDE.md`, `docs/MAP.md`, `CONTRIBUTING.md`, skills, `.gitattributes`, ramas | — |
 | M1 | M | Contrato v1 (`docs/contrato-plantillas.md`, esquemas JSON) + fixtures de §10 | C1 |
-| M2 | M | Librería Go (§5) con tests, `-race` y `go vet` en 3 sistemas | C2 |
+| M2 | M | Librería Go (§5): ✅ `contract`, `params` y `compat` (pasos 1–3); ⏳ validación de carpeta, `bundle`, `catalogtest` firmado, `client` con verificación de firmas y `inkt` (pasos 4–8). Tests, `-race` y `go vet` en 3 sistemas | C2 |
 | C0 | C | Prerrequisitos:<br>• **corregir la confianza por origen de la plantilla** (§8.2, hueco actual: va primero);<br>• tipos de clave nuevos en el servicio de configuración (lista para `templates.sources`, enum para `compile.engine`), con capa permitida por clave;<br>• `compile.engine`;<br>• detección de pdfLaTeX, LuaLaTeX, BibTeX y `kpsewhich` | C3 |
 | C1 | C | Análisis y diseño de la sección (rutas en `My-Creative-Ink-Repository`, comandos, IPC, decisiones) | C2 |
 | C2 | C | Catálogo de solo lectura: `list`, `search`, `info`, `packs`, `refresh` contra los fixtures | C3 |
@@ -493,7 +542,7 @@ tools/fixtures/data/
 | M5 | M | Resto de plantillas: artículo, presentaciones, infografía, cartas, ISPRS, registro de avances | M7 |
 | C4 | C | `pack`, `update`, `remove`, `sources` | C5 |
 | M6 | M | Tesis + kit de seguimiento (issues, CHANGELOG, CONTEXTO, revisiones) | M7 |
-| M7 | M | Publicación: GitHub Pages (catálogo) + Releases (bundles) desde CI | C5 |
+| M7 | M | Publicación: GitHub Pages (catálogo **firmado**) + Releases (bundles) desde CI. Antes, el humano genera el par de claves Ed25519, guarda la privada en un secreto de GitHub Actions y la pública entra en la librería (`client.Official`) | C5 |
 | C5 | C | Integración con el catálogo real | — |
 | — | M | Licencias **hechas el 2026-11-11**: MIT-0 para plantillas, MIT para la librería (compatible con cualquier licencia de Creative-Ink) | — |
 | M8 | M | Identidad (texto de muestra con el nombre y la descripción del repositorio) | — |
@@ -501,7 +550,8 @@ tools/fixtures/data/
 
 Casillas de seguimiento (se marcan con fecha al cerrar):
 
-- [ ] M0 · [ ] M1 · [ ] M2 · [ ] M3 · [ ] M4 · [ ] M5 · [ ] M6 · [ ] M7 · [ ] M8
+- [x] M0 (2026-11-10) · [x] M1 (2026-11-11) · [ ] M2 (en curso: pasos 1–3 de 8) · [ ] M3 · [ ] M4 · [ ] M5 · [ ] M6 · [ ] M7 · [ ] M8
+- [x] Licencias (2026-11-11) · [x] Revisión de seguridad incorporada (2026-11-11)
 - [ ] C0 · [ ] C1 · [ ] C2 · [ ] C3 · [ ] C4 · [ ] C5 · [ ] C6
 
 ## 12. Decisiones
@@ -521,6 +571,17 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
 9. Se incluyen los logos UNAM/FES. ~~Software libre; la licencia (probablemente MIT) se decide al final (M8).~~
    **Resuelto el 2026-11-11:** MIT para la librería y MIT-0 para las plantillas (`NOTICE.md`).
 10. Plantillas solo en español por ahora.
+
+### 12.1 bis. Tomadas (programador, 2026-11-11)
+
+11. **Licencias:** MIT para la librería, esquemas y documentación; **MIT-0** para las plantillas (los documentos de
+    los usuarios no arrastran avisos). Los logos y el material de terceros quedan excluidos (`NOTICE.md`).
+12. **El catálogo de prueba es un paquete Go** (`pkg/catalogtest`); no hay zips ni catálogos generados en git.
+13. **`--shell-escape` prohibido en v1:** los clientes bloquean `shellEscape: true` (`blocked`).
+14. **Catálogo oficial firmado con Ed25519:**
+    - **Qué se firma:** cada JSON (contrato §7.1).
+    - **Terceros:** con clave declarada, firma obligatoria; sin ella, "sin firma".
+15. **Endurecimiento de rutas:** colisiones por mayúsculas y `.latexmkrc` en cualquier forma, rechazados.
 
 ### 12.2 Respuestas del programador a las preguntas del agente de Creative-Ink (2026-11-11)
 
@@ -619,3 +680,12 @@ No afecta al catálogo. Se registra aquí porque las respuestas llegaron en el m
   - **Requerimientos para Creative-Ink:** confianza por origen de la plantilla, no compilar al crear, red solo bajo
     demanda y `templates.sources` solo en la capa del usuario.
   - **Respuestas:** a las 8 preguntas del agente (§12.2) y decisiones de UI/UX (§12.4).
+  - **`pkg/compat` implementado:** con el estado `blocked` (§5.2).
+- **2026-11-12 (revisión integral antes de pasar el documento a Creative-Ink):**
+  - **Cabecera:** actualizada; el contrato es la fuente de verdad.
+  - **§5:** nueva §5.1 con la organización del repositorio y del módulo `tools`, y §5.2 con el estado de cada paquete
+    (implementado o pendiente). La API de `client` queda marcada como propuesta.
+  - **Firma en todo el documento:** `.sig` en el árbol del catálogo, peticiones por consulta y `catalogtest` con clave
+    efímera.
+  - **Datos al día:** 16 zips de prueba, casillas de M0 y M1 marcadas, decisiones del 11 de noviembre en §12.1 bis, y
+    `go.work` en el reparto de responsabilidades.
