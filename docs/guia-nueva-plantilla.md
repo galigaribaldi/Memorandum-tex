@@ -75,7 +75,7 @@ Declara en `modes` solo los que la plantilla respeta:
 ## 4. Motor y bibliografía
 
 - No cargues `inputenc`, `fontenc` ni `fontspec` a mano: declara el componente `motor` y usa
-  `\input{Latex/ink/ink-motor}` (⏳ M3). Mientras tanto, el patrón de `ok-minima` (con iftex) es el equivalente.
+  `\input{Latex/ink/motor/ink-motor}` (⏳ M3: los componentes quedan en `Latex/ink/<componente>/` dentro del bundle). Mientras tanto, el patrón de `ok-minima` (con iftex) es el equivalente.
 - Por defecto: natbib con `\bibliographystyle{apalike}` y BibTeX (`"bibliography": "bibtex"`). Si quieres ofrecer Biber,
   añade un parámetro `enum` `bibliografia` con `["bibtex", "biber"]`.
 - `build.engines` debe incluir `pdflatex` y `xelatex`; añade `lualatex` si la compilaste con él.

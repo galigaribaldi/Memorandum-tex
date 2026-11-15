@@ -76,6 +76,9 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 - **`--shell-escape` está prohibido en v1** (MAP decisión 15). "Requiere confianza" no protege: en Creative-Ink una
   carpeta sin `.latexmkrc` ya es de confianza. Nada de externalización de TikZ, `minted` ni `\write18`.
 - **Nombres que solo difieren en mayúsculas** (`a.tex` y `A.tex`) se sobrescriben en macOS y Windows: se rechazan.
+  En macOS (APFS no distingue mayúsculas) el test de carpeta de ese caso se omite; B10 de los bundles sí se prueba.
+- **La lista de archivos permitidos vive solo en `contract/files.go`:** validación y extracción la comparten. No la
+  copies en otro paquete.
 - **Límites de copia de Creative-Ink:** 2000 archivos y 200 MB por plantilla. Sin imágenes pesadas en `src/`.
 - **Los `.log` de TeX no son UTF-8** (pdfTeX escribe ISO-8859): revisa con `grep -a`, o un conteo de errores da 0
   en falso. En Go, léelos como bytes, nunca con validación UTF-8.
@@ -89,5 +92,5 @@ Las hace cumplir `.claude/settings.json`; respétalas aunque un permiso falte.
 |------|-----|--------|
 | M0 | Gobierno: Tríada, CONTRIBUTING, README, `.gitattributes`, `.gitignore`, `.editorconfig`, skills | Hecho (2026-11-10, `20852d6`) |
 | M1 | Contrato v1 (`docs/contrato-plantillas.md`), 4 esquemas, 4 paquetes, fixtures, guía técnica, licencias | Hecho (2026-11-11, `6513b66`) |
-| M2 | Librería Go y `inkt`: ✅ `contract`, ✅ `params`, ✅ `compat`; siguen validación de carpeta, `bundle`, `catalogtest` (con firma), `client` (verifica firma), `cmd/inkt` | En curso (`DEV-feat-Contrato-Plantillas`) |
+| M2 | Librería Go y `inkt`: ✅ `contract`, ✅ `params`, ✅ `compat`, ✅ validación de carpeta, ✅ `bundle`; siguen `catalogtest` (con firma), `client` (verifica firma), `cmd/inkt` | En curso (`DEV-feat-Contrato-Plantillas`, pasos 1–5 de 8) |
 | M3–M8 | Componentes, piloto `ensayo`, migración, tesis, publicación, identidad | Pendiente (MAP §4.8) |

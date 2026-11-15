@@ -318,7 +318,8 @@ ensayo-1.0.0.zip
     ├── README.md
     ├── .creative-ink-meta      ← {"version": 1, "mainFile": "<entry>"}: lo genera inkt bundle
     ├── main.tex                ← todo lo que había en src/
-    ├── Latex/ink/…             ← componentes declarados, resueltos
+    ├── Latex/ink/<componente>/… ← componentes declarados, copiados de shared/<componente>/ (p. ej.
+    │                              Latex/ink/motor/ink-motor.tex); src/ no puede usar Latex/ink/
     └── …
 ```
 
@@ -328,12 +329,13 @@ ensayo-1.0.0.zip
 | B2 | Cada entrada, sin la carpeta raíz, es una ruta local con `/` como separador: sin `/` inicial, sin `.` ni `..` como segmento, y **cada segmento cumple `^[A-Za-z0-9._-]+$`** (como V31). Así `C:` y `\` se rechazan en cualquier sistema, no solo en Windows. Además se comprueba `filepath.IsLocal` sobre la ruta convertida al sistema |
 | B3 | Sin enlaces simbólicos ni entradas que no sean archivos o carpetas normales |
 | B4 | Archivos permitidos: extensiones `tex sty cls bst bib bbx cbx lbx cfg def md txt json png jpg jpeg pdf eps svg otf ttf` (en minúsculas) y los nombres exactos `LICENSE` y `.creative-ink-meta`. Cualquier otro (incluidos `.latexmkrc`, `latexmkrc`, `Makefile` y `*.sh`) se rechaza. Los nombres de rc de latexmk se rechazan **sin distinguir mayúsculas** (`.LATEXMKRC` es el mismo archivo en macOS y Windows) |
-| B5 | Como máximo 2000 archivos y 200 MB descomprimidos; ningún archivo con una relación de compresión mayor que 100:1 (bomba zip) |
+| B5 | Como máximo 2000 archivos y 200 MB descomprimidos; ningún archivo **de 1 MB o más** con una relación de compresión mayor que 100:1 (bomba zip; un archivo pequeño de espacios en blanco supera esa relación sin ser un ataque). Al extraer, ningún archivo puede ocupar más de lo que declara el zip: se lee como mucho el tamaño declarado |
 | B6 | Contiene `template.json`, `LICENSE`, `README.md`, `.creative-ink-meta` y el `entry`. `template.json` coincide en `id` y `version` con el índice. `LICENSE` lo genera `inkt bundle`: los textos de `LICENSES/<identificador>.txt` de cada identificador de `license`, en el orden de la expresión, separados por una línea en blanco |
 | B7 | `.creative-ink-meta` tiene exactamente `version: 1` y `mainFile` igual al `entry`. La configuración del proyecto (motor, etc.) la escribe Creative-Ink, no el bundle |
-| B8 | Reproducible: entradas ordenadas por ruta, fecha fija `2000-01-01T00:00:00Z`, método Deflate. Mismo contenido → mismo `sha256` en cualquier sistema |
+| B8 | Reproducible: entradas ordenadas por ruta, fecha fija `2000-01-01T00:00:00Z`, método Deflate. Mismo contenido → mismo `sha256` en cualquier sistema **con la misma versión de Go** (la salida de Deflate puede cambiar entre versiones; por eso el hash se calcula al publicar y viaja en el catálogo firmado, nunca se recalcula en el cliente) |
 | B9 | El `sha256` se verifica sobre el zip completo **antes** de extraer |
 | B10 | Ningún par de entradas difiere solo en mayúsculas (`a.tex` y `A.tex`): en macOS y Windows una sobrescribiría a la otra al extraer. Se rechaza como ruta insegura |
+| B11 | Defensa en profundidad: `SafeExtract` rechaza un bundle cuyo `template.json` pida `shellEscape: true` (`ErrForbiddenFile`), aunque `compat` ya lo haya bloqueado antes de descargar |
 
 ## 10. `ink-params.tex`
 
@@ -367,7 +369,7 @@ byte a byte):
    \providecommand{\ConPortada}{true}
    ```
 2. Cada `macro` del manifiesto tiene su `\providecommand` en `src/`, así la plantilla **compila sin `ink-params.tex`**.
-3. Compila con cada motor de `build.engines` (el motor se elige en `Latex/ink/ink-motor.tex` con iftex).
+3. Compila con cada motor de `build.engines` (el motor se elige en `Latex/ink/motor/ink-motor.tex` con iftex).
 4. Respeta los modos que declara (§5).
 5. Ninguna ruta sale de la carpeta (`\input`, `\include`, `\includegraphics`, `\graphicspath`, `\bibliography`).
 6. Sin `--shell-escape` ni nada que lo necesite (externalización de TikZ, `minted`, `\write18`): en v1 está bloqueado.
@@ -470,3 +472,9 @@ Tipados, comparables con `errors.Is` o `errors.As`:
   - **Rutas:** se rechazan las que colisionan por mayúsculas (B10) y los rc de latexmk sin distinguir mayúsculas (B4).
   - **Marcadores:** prohibidos `{{TITULO}}` y `{{TITLE}}`.
   - **Firma:** firma Ed25519 de cada JSON del catálogo (§7.1) y el error nuevo `ErrSignature`.
+- (2026-11-15) Al implementar `pkg/bundle` y la validación de carpeta:
+  - **Componentes:** van a `Latex/ink/<componente>/`, para que dos componentes nunca choquen.
+  - **B5:** la relación 100:1 aplica a archivos de 1 MB o más, y la extracción nunca escribe más de lo declarado.
+  - **B8:** el `sha256` es reproducible con la misma versión de Go.
+  - **B11:** `SafeExtract` también rechaza `shellEscape`.
+  - **Extensiones:** se comparan exactas y en minúsculas (`figura.PNG` no vale; se renombra).

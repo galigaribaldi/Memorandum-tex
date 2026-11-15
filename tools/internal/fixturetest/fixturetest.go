@@ -49,6 +49,29 @@ func ReadJSON(t testing.TB, path string, v any) {
 	}
 }
 
+// CopyDir copies the tree src into dst (created if needed), regular files only.
+func CopyDir(t testing.TB, src, dst string) {
+	t.Helper()
+	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, p)
+		target := filepath.Join(dst, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
+		}
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
+	})
+	if err != nil {
+		t.Fatalf("copiar %s: %v", src, err)
+	}
+}
+
 // MergePatch applies an RFC 7386 JSON Merge Patch: objects are merged
 // recursively, a null value deletes the key and anything else (lists
 // included) replaces the target. target is modified in place when it is an

@@ -36,7 +36,7 @@ define la skill `template-contract` (y `docs/contrato-plantillas.md` cuando exis
    \InputIfFileExists{ink-params}{}{}   % siempre primero
    \providecommand{\TituloDoc}{…}        % después, los valores por defecto
    ```
-4. Sustituye `inputenc`/`fontenc`/`lmodern` por `\input{Latex/ink/ink-motor}`, las paletas copiadas por el componente
+4. Sustituye `inputenc`/`fontenc`/`lmodern` por `\input{Latex/ink/motor/ink-motor}`, las paletas copiadas por el componente
    `paletas` y los logos por la institución. Quita `\graphicspath` con `../`.
 5. Respeta los modos: `\ifdefined\borrador` → `\PassOptionsToPackage{draft}{graphicx}`; `\ifdefined\SoloCapitulo` →
    `\includeonly{\SoloCapitulo}`. Los nombres son fijos (los inyecta `ci compile` de Creative-Ink).

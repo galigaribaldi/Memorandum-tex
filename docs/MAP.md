@@ -51,12 +51,14 @@ Memorandum-tex/
 │   │       ├── params/            ← EscapeTeX, Resolve y salida exacta de ink-params.tex
 │   │       ├── invalid/           ← manifests.json (V01–V20) y folders.json (V30–V39), generados al vuelo en los tests
 │   │       └── bundles/cases.json ← 16 zips válidos y maliciosos, construidos en los tests (sha256 reproducible)
-│   ├── internal/fixturetest/      ← ayudas de test: carga de casos, JSON Merge Patch
+│   ├── internal/fixturetest/      ← ayudas de test: carga de casos, JSON Merge Patch, copia de carpetas
+│   ├── internal/validate/         ← ✅ validación de una carpeta de plantilla completa (manifiesto + V30–V39), para inkt y la CI
 │   └── pkg/
-│       ├── contract/              ← ✅ tipos, errores compartidos, validación del manifiesto (V01–V20) y paquetes (V50–V52)
+│       ├── contract/              ← ✅ tipos, errores compartidos, validación del manifiesto (V01–V20) y paquetes (V50–V52),
+│       │                             lista única de archivos permitidos (files.go: la usan validate y bundle)
 │       ├── params/                ← ✅ ParseAssignments, Resolve, RenderInkParams, EscapeTeX
 │       ├── compat/                ← ✅ Evaluate, EvaluateJSON, UpdateAvailable (ready … blocked)
-│       ├── bundle/                ← ⏳ paso 5: empaquetar (reproducible), VerifySHA256, SafeExtract (B1–B10)
+│       ├── bundle/                ← ✅ Collect/Build/WriteZip (reproducible), SHA256, VerifySHA256, SafeExtract (B1–B11)
 │       ├── catalogtest/           ← ⏳ paso 6: catálogo de prueba firmado (clave efímera) servido con httptest
 │       └── client/                ← ⏳ paso 7: índice, manifiestos, firmas, caché ETag, Get y GetPack
 └── .github/workflows/             ← ⏳ M7: validate.yml (3 SO) y release.yml (Pages + Releases)
@@ -69,7 +71,7 @@ Memorandum-tex/
           │                                     │
           │  solo referencia lo suyo y          │ inkt bundle (M2) resuelve los componentes
           │  los componentes declarados         ▼
- shared/*  ─────────copiados a──────────►  <id>-<versión>.zip  (autocontenido, Latex/ink/…)
+ shared/*  ─────────copiados a──────────►  <id>-<versión>.zip  (autocontenido, Latex/ink/<componente>/…)
                                                  │
                                inkt index + inkt sign ▼   (clave privada: solo en un secreto de GitHub Actions)
                   catalog/v1/index.json + manifiestos + versions.json + paquetes, cada uno con su .sig (Pages)
@@ -98,7 +100,7 @@ gana el contrato.
 | `index.json` | CI → Creative-Ink | Última versión de cada plantilla y lista de paquetes; ≤ 1 MB; rutas relativas a la URL del índice | §7 | ⏳ M2 (fixture), M7 (real) |
 | `<archivo>.sig` | `inkt sign` (CI) → `client` | `{keyId, algorithm: ed25519, signature}` sobre los bytes exactos de cada JSON del catálogo; obligatoria en el oficial | §7.1 | ⏳ M2 pasos 6–8; clave real en M7 |
 | `packs/<id>.json` | Repositorio → Creative-Ink | 1–100 `{id, version?}`; sin zip propio; `todo` reservado y generado | §8 | ✅ 4 paquetes, validados por `pkg/contract` |
-| Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Reglas B1–B10: una raíz = id; segmentos `^[A-Za-z0-9._-]+$`; sin enlaces ni colisiones por mayúsculas; lista de extensiones + `LICENSE` y `.creative-ink-meta`; rc de latexmk rechazados en cualquier forma; ≤ 2000 archivos, 200 MB y 100:1; reproducible | §9 | 16 casos en fixtures; ⏳ M2 paso 5 |
+| Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Reglas B1–B11: una raíz = id; segmentos `^[A-Za-z0-9._-]+$`; sin enlaces ni colisiones por mayúsculas; lista de extensiones + `LICENSE` y `.creative-ink-meta`; rc de latexmk rechazados en cualquier forma; ≤ 2000 archivos, 200 MB y 100:1 (desde 1 MB); nunca más de lo declarado; sin `shellEscape`; componentes en `Latex/ink/<componente>/`; reproducible con la misma versión de Go | §9 | ✅ `pkg/bundle`, 16 casos + 7 tests |
 | `.creative-ink-meta` del bundle | `inkt bundle` → Creative-Ink | Exactamente `{"version": 1, "mainFile": "<entry>"}` (`core.ProjectMeta` de Creative-Ink) | §9 B7 | Especificado |
 | `ink-params.tex` | Librería → plantilla | Dos líneas de cabecera y `\def\<macro>{valor}` en el orden del manifiesto; `EscapeTeX` igual a `core.EscapeTeX` | §10 | ✅ `pkg/params`, 2 salidas exactas |
 | Errores de parámetros | Librería → Creative-Ink | Códigos `unknown`, `required`, `type`, `enum`, `length`, `items`, por campo | §4.3 | ✅ `pkg/params`, 10 casos |
@@ -114,8 +116,9 @@ Anatomía: `templates/<categoria>/<id>/` con `template.json`, `README.md` (uso, 
 `referencias.bib`, `img/`). El archivo principal es `main.tex` salvo que `entry` diga otra cosa.
 
 ### 4.2 Componentes compartidos (⏳ M3)
-Fuente única de paletas, motor, comandos e instituciones. En el repositorio viven una sola vez; `inkt bundle` copia los
-declarados a `src/Latex/ink/` del bundle. Una institución nueva es una carpeta en `shared/instituciones/` con su
+Fuente única de paletas, motor, comandos e instituciones. En el repositorio viven una sola vez; `inkt bundle` copia cada
+componente declarado de `shared/<componente>/` a `Latex/ink/<componente>/` del bundle (implementado en `pkg/bundle`,
+2026-11-15); `src/` no puede usar `Latex/ink/`. Una institución nueva es una carpeta en `shared/instituciones/` con su
 `institucion.tex` (textos) y `logos/`; ninguna plantilla escribe a mano "UNAM" o "FES Acatlán".
 
 ### 4.3 Parámetros y modos (✅ especificado en M1, implementado en `pkg/params` el 2026-11-11)
@@ -220,8 +223,12 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
     de resolución, 2 salidas exactas de `ink-params.tex` y 9 de escapado.
   - [x] Paso 3 (2026-11-11): `pkg/compat` (`Evaluate`, `EvaluateJSON`, `UpdateAvailable`). Severidad: incompatible >
     blocked > missing-engine > missing-packages > ready. `--shell-escape` siempre da `blocked`. 7 tests.
-  - [ ] Paso 4: validación de carpeta (V30–V39, 27 casos generados al vuelo).
-  - [ ] Paso 5: `pkg/bundle` (empaquetado reproducible, `LICENSE` desde `LICENSES/`, `SafeExtract` B1–B10, 16 casos).
+  - [x] Paso 4 (2026-11-15): `internal/validate.Folder` (manifiesto + V30–V39) y la lista única de archivos permitidos
+    en `contract/files.go`. 26 de 27 casos en macOS; `colision-mayusculas` se omite en sistemas de archivos que no
+    distinguen mayúsculas (se prueba en Linux y, para bundles, B10 en todos).
+  - [x] Paso 5 (2026-11-15): `pkg/bundle` (`Collect`, `Build`, `WriteZip` reproducible, `LICENSE` desde `LICENSES/`,
+    `SHA256`, `VerifySHA256`, `SafeExtract` B1–B11 en carpeta temporal y `rename`). 16/16 casos, más tamaño falso,
+    cancelación, destino ocupado, id o versión inesperados y `shellEscape`.
   - [ ] Paso 6: `pkg/catalogtest` + generación del índice + firma Ed25519 de cada JSON con clave efímera.
   - [ ] Paso 7: `pkg/client` (firma obligatoria en el oficial, `sha256`, caché ETag, sin conexión, `Get`, `GetPack`).
   - [ ] Paso 8: `cmd/inkt` (`validate`, `bundle`, `index`, `sign`, `keygen`) y binario de comprobación.

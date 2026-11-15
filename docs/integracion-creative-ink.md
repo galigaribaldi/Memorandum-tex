@@ -255,14 +255,14 @@ ensayo-1.0.0.zip
   coincidir con `core.EscapeTeX` de Creative-Ink; se comprobará con un test compartido de casos.
 - Cada plantilla hace `\InputIfFileExists{ink-params}{}{}` **antes** de sus `\providecommand` por defecto. Por eso
   **compila igual sin el archivo**, ya sea a mano o con otro editor.
-- Un booleano se compara con `\inkIfTrue{\ConPortada}{…}{…}` (definido en `Latex/ink/ink-base.tex`).
+- Un booleano se compara con `\inkIfTrue{\ConPortada}{…}{…}` (definido en `Latex/ink/base/ink-base.tex`).
 
 ### 4.7 Convenciones LaTeX que Creative-Ink puede dar por hechas
 
 - **Modos:** `\borrador` (graphicx en modo draft) y `\SoloCapitulo{<ruta>}` (`\includeonly`) con **los mismos
   nombres** que ya usa `ci compile borrador|solo`. Las plantillas los respetan si se definen por la línea de
   órdenes o en `ink-params.tex`.
-- **Motor:** `Latex/ink/ink-motor.tex` (con iftex) carga `inputenc`/`fontenc` en pdfLaTeX y `fontspec` en
+- **Motor:** `Latex/ink/motor/ink-motor.tex` (con iftex) carga `inputenc`/`fontenc` en pdfLaTeX y `fontspec` en
   XeLaTeX o LuaLaTeX. Por eso las plantillas **también compilan con el `latexmk -xelatex` fijo** que Creative-Ink
   tiene hoy, mientras llega `compile.engine`.
 - **Sin `--shell-escape`, nunca, en v1** (corregido el 2026-11-11 tras la revisión de seguridad de Creative-Ink).
@@ -309,10 +309,12 @@ Memorandum-tex/
     ├── fixtures/                 ← ✅ datos de prueba incrustados (embed.FS): fixtures.FS(), fixtures.Dir()
     │   └── data/                 ← plantillas de prueba, casos de parámetros, casos inválidos, casos de bundles
     ├── internal/fixturetest/     ← ✅ ayudas de test internas (Creative-Ink no puede ni necesita importarlas)
-    ├── pkg/contract/             ← ✅ tipos, errores compartidos (contract.Err*), validación V01–V20 y V50–V52
+    ├── internal/validate/        ← ✅ validación de carpetas de este repositorio (V30–V39); Creative-Ink no la usa
+    ├── pkg/contract/             ← ✅ tipos, errores compartidos (contract.Err*), validación V01–V20 y V50–V52,
+    │                                lista única de archivos permitidos (AllowedBundleFile, IsLatexmkrc)
     ├── pkg/params/               ← ✅ clave=valor → valores → ink-params.tex
     ├── pkg/compat/               ← ✅ ¿se puede usar en este equipo? (ready … blocked)
-    ├── pkg/bundle/               ← ⏳ paso 5: empaquetar (reproducible), verificar sha256, extraer de forma segura
+    ├── pkg/bundle/               ← ✅ empaquetar (reproducible), verificar sha256, extraer de forma segura
     ├── pkg/catalogtest/          ← ⏳ paso 6: catálogo de prueba firmado servido con httptest
     ├── pkg/client/               ← ⏳ paso 7: índice, manifiestos, firmas, caché, descargas individuales y paquetes
     └── cmd/inkt/                 ← ⏳ paso 8: CLI de este repositorio (validate, bundle, index, sign); Creative-Ink no la usa
@@ -326,12 +328,28 @@ Memorandum-tex/
 | `pkg/contract` | Tipos del contrato; errores compartidos; `ValidateManifest(data, Options) → (*Manifest, Report)`; `ValidatePack`; utilidades (`ValidID`, `ValidRelPath`, `ParseSemver`, `ParseLicense`…) | ✅ 2026-11-11 | No | No |
 | `pkg/params` | `ParseAssignments`, `Resolve(m, Input) → (*Resolved, error)`, `RenderInkParams`, `EscapeTeX` | ✅ 2026-11-11 | No | No |
 | `pkg/compat` | `Evaluate(m, Env) → Report`, `EvaluateJSON`, `UpdateAvailable` | ✅ 2026-11-11 | No: Creative-Ink le pasa `Env` | No |
-| `pkg/bundle` | `VerifySHA256`, `SafeExtract(zip, dst, Limits)` con las reglas B1–B10 | ⏳ paso 5 | No | No |
+| `pkg/bundle` | `VerifySHA256`, `SafeExtract`/`SafeExtractFile` con las reglas B1–B11; `Collect`/`Build`/`WriteZip` (los usa este repositorio) | ✅ 2026-11-15 | No | No |
 | `pkg/catalogtest` | Solo para tests: construye y **firma** (con una clave efímera) el catálogo de prueba y lo sirve con `httptest.Server` | ⏳ paso 6 | No | Solo local (`127.0.0.1`) |
 | `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get`, `GetPack`; **verificación de firmas**; caché con ETag; resultado sin conexión | ⏳ paso 7 | No | Sí (HTTPS) |
 
-**API.** Las partes de `params` y `compat` son las **firmas reales**. La parte de `client` es una **propuesta**: se
-cierra en el paso 7 y se actualizará aquí.
+**API.** Las partes de `params`, `compat` y `bundle` son las **firmas reales**. La parte de `client` es una
+**propuesta**: se cierra en el paso 7 y se actualizará aquí. Normalmente Creative-Ink no llamará a `bundle`
+directamente, porque `client.Get` lo hará por él; queda disponible para extraer un zip que el usuario ya tenga.
+
+```go
+// IMPLEMENTADO (2026-11-15), firma real:
+f, _ := os.Open(zipPath)
+err := bundle.VerifySHA256(f, dist.SHA256)            // ANTES de extraer; contract.ErrChecksum si no coincide
+res, err := bundle.SafeExtractFile(ctx, zipPath, dest, bundle.ExtractOptions{
+    ExpectID: "ensayo", ExpectVersion: "1.0.0",         // lo que anunció el índice firmado
+})                                                    // Limits cero = DefaultLimits (2000 archivos, 200 MB, 100:1 desde 1 MB)
+// res = *bundle.Result{ID, Version, Manifest, Dir, MainFile, Files}
+// Sobre el destino:
+// - debe no existir o estar vacío; si no, contract.ErrDestExists y no se toca nada;
+// - se extrae en una carpeta temporal hermana y se renombra al final: un fallo o un ctx cancelado no dejan nada;
+// - ya trae .creative-ink-meta {version, mainFile}, LICENSE (MIT-0), README.md y template.json (sin $schema).
+// Errores: contract.ErrUnsafePath | ErrForbiddenFile | ErrBundleLayout | ErrTooLarge | ErrDestExists | ctx.Err()
+```
 
 ```go
 // PROPUESTA (se cierra en el paso 7):
@@ -532,7 +550,7 @@ tools/fixtures/data/
 |------|------|-----|------------|
 | M0 | M | Gobierno: `CLAUDE.md`, `docs/MAP.md`, `CONTRIBUTING.md`, skills, `.gitattributes`, ramas | — |
 | M1 | M | Contrato v1 (`docs/contrato-plantillas.md`, esquemas JSON) + fixtures de §10 | C1 |
-| M2 | M | Librería Go (§5): ✅ `contract`, `params` y `compat` (pasos 1–3); ⏳ validación de carpeta, `bundle`, `catalogtest` firmado, `client` con verificación de firmas y `inkt` (pasos 4–8). Tests, `-race` y `go vet` en 3 sistemas | C2 |
+| M2 | M | Librería Go (§5): ✅ `contract`, `params`, `compat`, validación de carpeta y `bundle` (pasos 1–5); ⏳ `catalogtest` firmado, `client` con verificación de firmas e `inkt` (pasos 6–8). Tests, `-race` y `go vet` en 3 sistemas | C2 |
 | C0 | C | Prerrequisitos:<br>• **corregir la confianza por origen de la plantilla** (§8.2, hueco actual: va primero);<br>• tipos de clave nuevos en el servicio de configuración (lista para `templates.sources`, enum para `compile.engine`), con capa permitida por clave;<br>• `compile.engine`;<br>• detección de pdfLaTeX, LuaLaTeX, BibTeX y `kpsewhich` | C3 |
 | C1 | C | Análisis y diseño de la sección (rutas en `My-Creative-Ink-Repository`, comandos, IPC, decisiones) | C2 |
 | C2 | C | Catálogo de solo lectura: `list`, `search`, `info`, `packs`, `refresh` contra los fixtures | C3 |
@@ -550,7 +568,7 @@ tools/fixtures/data/
 
 Casillas de seguimiento (se marcan con fecha al cerrar):
 
-- [x] M0 (2026-11-10) · [x] M1 (2026-11-11) · [ ] M2 (en curso: pasos 1–3 de 8) · [ ] M3 · [ ] M4 · [ ] M5 · [ ] M6 · [ ] M7 · [ ] M8
+- [x] M0 (2026-11-10) · [x] M1 (2026-11-11) · [ ] M2 (en curso: pasos 1–5 de 8) · [ ] M3 · [ ] M4 · [ ] M5 · [ ] M6 · [ ] M7 · [ ] M8
 - [x] Licencias (2026-11-11) · [x] Revisión de seguridad incorporada (2026-11-11)
 - [ ] C0 · [ ] C1 · [ ] C2 · [ ] C3 · [ ] C4 · [ ] C5 · [ ] C6
 
@@ -689,3 +707,15 @@ No afecta al catálogo. Se registra aquí porque las respuestas llegaron en el m
     efímera.
   - **Datos al día:** 16 zips de prueba, casillas de M0 y M1 marcadas, decisiones del 11 de noviembre en §12.1 bis, y
     `go.work` en el reparto de responsabilidades.
+- **2026-11-15 (M2, pasos 4 y 5):**
+  - **`pkg/bundle` implementado:** firma real en §5.2. Lo más relevante para Creative-Ink:
+    - la extracción valida **todo** el zip antes de escribir;
+    - nunca escribe más de lo que declara la cabecera;
+    - trabaja en una carpeta temporal y la renombra al final;
+    - rechaza un destino con archivos;
+    - rechaza también `shellEscape` (B11).
+  - **Componentes:** dentro del bundle van en `Latex/ink/<componente>/`.
+  - **Relación de compresión:** 100:1 solo para archivos de 1 MB o más.
+  - **`sha256`:** reproducible con la misma versión de Go; por eso el cliente **verifica** el hash del catálogo firmado
+    y nunca lo recalcula a partir de las fuentes.
+  - **Validación de carpeta:** implementada en `internal/validate`, solo para este repositorio.
