@@ -206,6 +206,48 @@ func TestPublishedManifestNeedsDist(t *testing.T) {
 	}
 }
 
+// TestPublishedPreviewPDF: the sample PDF of §6.1 is optional when
+// published, and when present it is checked by V17.
+func TestPublishedPreviewPDF(t *testing.T) {
+	dist := map[string]any{
+		"url":    "https://github.com/galigaribaldi/Memorandum-tex/releases/download/ok-minima-v1.0.0/ok-minima-1.0.0.zip",
+		"sha256": strings.Repeat("ab", 32), "size": json.Number("1234"),
+	}
+	opt := contract.Options{Origin: contract.OriginPublished}
+	base := readFixture(t, okMinima)
+
+	good := caseData(t, base, manifestCase{Patch: map[string]any{"dist": dist, "previewPdf": map[string]any{
+		"url":    "https://github.com/galigaribaldi/Memorandum-tex/releases/download/ok-minima-v1.0.0/ok-minima-1.0.0-preview.pdf",
+		"sha256": strings.Repeat("cd", 32), "size": json.Number("81234"), "pages": json.Number("3"),
+	}}})
+	m, rep := contract.ValidateManifest(good, opt)
+	if rep.HasErrors() || m.PreviewPDF == nil || m.PreviewPDF.Pages != 3 {
+		t.Fatalf("una vista previa válida debe aceptarse: %v", rep.Findings)
+	}
+
+	bad := caseData(t, base, manifestCase{Patch: map[string]any{"dist": dist, "previewPdf": map[string]any{
+		"url": "http://x", "sha256": "ABC", "size": json.Number("5242881"), "pages": json.Number("0"),
+	}}})
+	_, rep = contract.ValidateManifest(bad, opt)
+	errs := rep.Errors()
+	if len(errs) != 4 {
+		t.Fatalf("se esperaban 4 errores V17 (url, sha256, size > 5 MB, pages), hubo %d: %v", len(errs), rep.Findings)
+	}
+	for _, f := range errs {
+		if f.Code != "V17" {
+			t.Errorf("se esperaba V17: %v", f)
+		}
+	}
+
+	typo := caseData(t, base, manifestCase{Patch: map[string]any{"dist": dist, "previewPdf": map[string]any{
+		"url": "https://x/p.pdf", "sha256": strings.Repeat("cd", 32), "size": json.Number("1"), "pages": json.Number("1"),
+		"paginas": json.Number("1"),
+	}}})
+	if _, rep := contract.ValidateManifest(typo, opt); !keysOf(rep)[findingKey{"V20", contract.LevelWarning}] {
+		t.Errorf("un campo desconocido dentro de previewPdf debe avisar: %v", rep.Findings)
+	}
+}
+
 // TestThirdPartyCatalogWithoutPolicy: without RepoPolicy, English and lualatex
 // only are acceptable (another catalog, other rules).
 func TestThirdPartyCatalogWithoutPolicy(t *testing.T) {

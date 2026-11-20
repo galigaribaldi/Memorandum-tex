@@ -98,6 +98,7 @@ gana el contrato.
 | Manifiesto publicado | CI → Creative-Ink | El del repositorio sin `$schema` ni `components`, más `dist {url, sha256, size, publishedAt}` | §6 | ⏳ M2 (generador), M7 (real) |
 | `versions.json` | CI → Creative-Ink | Versiones publicadas, más nueva primero; rutas relativas al archivo | §6 | ⏳ M2 |
 | `index.json` | CI → Creative-Ink | Última versión de cada plantilla y lista de paquetes; ≤ 1 MB; rutas relativas a la URL del índice | §7 | ⏳ M2 (fixture), M7 (real) |
+| `previewPdf` | CI → Creative-Ink | Vista previa en PDF con los valores por defecto: `{url, sha256, size ≤ 5 MB, pages}` en el manifiesto publicado y en el índice; asset de la Release; opcional; prohibido en el repositorio (V19) | §6.1 | ✅ `pkg/contract`; ⏳ pasos 6–7 y M7 |
 | `<archivo>.sig` | `inkt sign` (CI) → `client` | `{keyId, algorithm: ed25519, signature}` sobre los bytes exactos de cada JSON del catálogo; obligatoria en el oficial | §7.1 | ⏳ M2 pasos 6–8; clave real en M7 |
 | `packs/<id>.json` | Repositorio → Creative-Ink | 1–100 `{id, version?}`; sin zip propio; `todo` reservado y generado | §8 | ✅ 4 paquetes, validados por `pkg/contract` |
 | Bundle `<id>-<versión>.zip` | `inkt bundle` → librería | Reglas B1–B11: una raíz = id; segmentos `^[A-Za-z0-9._-]+$`; sin enlaces ni colisiones por mayúsculas; lista de extensiones + `LICENSE` y `.creative-ink-meta`; rc de latexmk rechazados en cualquier forma; ≤ 2000 archivos, 200 MB y 100:1 (desde 1 MB); nunca más de lo declarado; sin `shellEscape`; componentes en `Latex/ink/<componente>/`; reproducible con la misma versión de Go | §9 | ✅ `pkg/bundle`, 16 casos + 7 tests |
@@ -207,6 +208,29 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 17. **Endurecimiento de rutas:** se rechazan las entradas que colisionan por mayúsculas (B10) y los rc de latexmk sin
     distinguir mayúsculas (B4).
 
+### Solicitudes de Creative-Ink (decisiones del programador, 2026-11-15), pendientes de incorporar
+18. **Vista previa en PDF.** *Análisis del 2026-11-15:* no es crítica en seguridad ni bloquea las fases C0–C2 de
+    Creative-Ink. Se incorpora **ahora**, antes del paso 6, para no reabrir `catalogtest` ni `client`.
+    *Decisiones del programador:* se aloja en **Releases** y el límite es de **5 MB**.
+    *Estado:*
+    - ✅ especificado: contrato §6.1, `previewPdf` en el manifiesto publicado y en el índice;
+    - ✅ esquemas y `pkg/contract`: tipo `PreviewPDF`, V17 y V19, con tests;
+    - ⏳ `catalogtest` (paso 6), `client` (paso 7) y la compilación en la CI (M7).
+
+    Pedido original:
+    - **Qué se pide:** un `preview.pdf` por plantilla, compilado por la CI de este repositorio con los valores por
+      defecto.
+    - **Integridad:** su `sha256` y su tamaño van en el manifiesto **firmado**, con un límite de tamaño en el contrato
+      (validado en V17).
+    - **Descarga:** `client` debe poder descargarlo y verificarlo **por separado del bundle**.
+    - **`preview.png`:** se mantiene para las miniaturas.
+    - **Dónde se aplica:** contrato §3/§6/§7, esquemas, `contract`, `catalogtest` (paso 6), `client` (paso 7) y la
+      compilación en la CI (M7).
+19. **Páginas del PDF de muestra** (opcional, para una animación futura): el manifiesto publicado indica cuántas
+    páginas tiene. ✅ especificado como `previewPdf.pages` (1–10 000); la CI las cuenta en M7.
+20. **Los catálogos de terceros solo se compilan desde la Terminal CI de Creative-Ink.** No cambia nada en la librería.
+    Consecuencia: sus manifiestos pueden no traer `preview.pdf`, así que el campo debe ser **opcional**.
+
 ### Plan por fases
 - [x] **M0 — Gobierno** (`DEV-feat-Contrato-Plantillas`, hecho el 2026-11-10, commits `f83dcf8`…`20852d6`): CLAUDE.md,
   MAP.md, CONTRIBUTING.md, README.md, `.gitattributes`, `.gitignore`, `.editorconfig`, skills `latex-template-author` y
@@ -230,7 +254,9 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
     `SHA256`, `VerifySHA256`, `SafeExtract` B1–B11 en carpeta temporal y `rename`). 16/16 casos, más tamaño falso,
     cancelación, destino ocupado, id o versión inesperados y `shellEscape`.
   - [ ] Paso 6: `pkg/catalogtest` + generación del índice + firma Ed25519 de cada JSON con clave efímera.
+    *Pendiente añadido el 2026-11-15 (decisión 18):* publicar un `preview.pdf` de prueba con su `sha256`, tamaño y páginas.
   - [ ] Paso 7: `pkg/client` (firma obligatoria en el oficial, `sha256`, caché ETag, sin conexión, `Get`, `GetPack`).
+    *Pendiente añadido el 2026-11-15 (decisión 18):* descarga y verificación del `preview.pdf` por separado del bundle.
   - [ ] Paso 8: `cmd/inkt` (`validate`, `bundle`, `index`, `sign`, `keygen`) y binario de comprobación.
 - [ ] **M3 — Componentes compartidos:** motor, base, paletas, comandos, institución UNAM-FES con logos.
 - [ ] **M4 — Piloto `ensayo`** de punta a punta (el humano lo compila con los tres motores).
@@ -239,6 +265,8 @@ bitácora), `revisiones/<revisor>/<ronda>/` con categorías, `docs/VERSIONADO.md
 - [x] **Licencia** (decisiones 13 y 14, hecho el 2026-11-11): `LICENSE`, `LICENSES/{MIT,MIT-0}.txt`, `NOTICE.md`,
   `license` como expresión SPDX en el contrato y en los fixtures. *Queda para M5:* el `LicenseRef` de la clase ISPRS.
 - [ ] **M7 — CI y publicación:** `validate.yml` (3 SO) y `release.yml` (Pages + Releases).
+  *Pendiente añadido el 2026-11-15 (decisión 18):* la CI compila cada plantilla con sus valores por defecto y su
+  `defaultEngine` para generar `preview.pdf` (necesita TeX Live en GitHub Actions), cuenta sus páginas y lo publica.
 - [ ] **M8 — Identidad:** texto de muestra con el nombre y la descripción del repositorio en cada plantilla.
 
 ## 4.9 Deuda técnica heredada (detectada el 2026-11-10 al analizar los repositorios de origen)

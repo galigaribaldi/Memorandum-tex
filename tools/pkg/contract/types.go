@@ -54,7 +54,9 @@ const (
 	MaxBundleBytes         = 200 << 20 // B5, uncompressed
 	MaxBundleFiles         = 2000      // B5
 	MaxCompressionRatio    = 100       // B5, per file
-	MaxPreviewBytes        = 200 << 10 // V17
+	MaxPreviewBytes        = 200 << 10 // V17, preview.png
+	MaxPreviewPDFBytes     = 5 << 20   // V17, previewPdf (§6.1)
+	MaxPreviewPDFPages     = 10000     // V17, previewPdf
 	MaxParameters          = 40
 	DefaultStringMaxLength = 300
 	DefaultListMaxItems    = 20
@@ -86,6 +88,17 @@ type Manifest struct {
 	Modes         []string    `json:"modes"`
 	Preview       string      `json:"preview,omitempty"`
 	Dist          *Dist       `json:"dist,omitempty"`
+	PreviewPDF    *PreviewPDF `json:"previewPdf,omitempty"`
+}
+
+// PreviewPDF is the sample PDF of a published version (§6.1): compiled by
+// the publishing CI with the default values, verified by its sha256 before
+// it is shown. Optional: third-party catalogs may not have it.
+type PreviewPDF struct {
+	URL    string `json:"url"`
+	SHA256 string `json:"sha256"`
+	Size   int64  `json:"size"`
+	Pages  int    `json:"pages"`
 }
 
 // Author of a template.
@@ -178,23 +191,24 @@ type Source struct {
 
 // IndexTemplate summarizes the latest version of a template.
 type IndexTemplate struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Description   string    `json:"description"`
-	Category      string    `json:"category"`
-	Tags          []string  `json:"tags,omitempty"`
-	Language      string    `json:"language"`
-	License       string    `json:"license"`
-	Latest        string    `json:"latest"`
-	Engines       []string  `json:"engines"`
-	DefaultEngine string    `json:"defaultEngine"`
-	Bibliography  string    `json:"bibliography"`
-	ShellEscape   bool      `json:"shellEscape"`
-	Requires      *Requires `json:"requires,omitempty"`
-	Manifest      string    `json:"manifest"`
-	Versions      string    `json:"versions"`
-	Preview       string    `json:"preview,omitempty"`
-	Dist          Dist      `json:"dist"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Description   string      `json:"description"`
+	Category      string      `json:"category"`
+	Tags          []string    `json:"tags,omitempty"`
+	Language      string      `json:"language"`
+	License       string      `json:"license"`
+	Latest        string      `json:"latest"`
+	Engines       []string    `json:"engines"`
+	DefaultEngine string      `json:"defaultEngine"`
+	Bibliography  string      `json:"bibliography"`
+	ShellEscape   bool        `json:"shellEscape"`
+	Requires      *Requires   `json:"requires,omitempty"`
+	Manifest      string      `json:"manifest"`
+	Versions      string      `json:"versions"`
+	Preview       string      `json:"preview,omitempty"`
+	PreviewPDF    *PreviewPDF `json:"previewPdf,omitempty"`
+	Dist          Dist        `json:"dist"`
 }
 
 // IndexPack points to a pack.

@@ -47,6 +47,7 @@ type Context struct {
 var knownManifestFields = []string{
 	"$schema", "schemaVersion", "id", "version", "name", "description", "category", "tags", "language",
 	"license", "authors", "entry", "build", "requires", "components", "parameters", "modes", "preview", "dist",
+	"previewPdf",
 }
 
 var (
@@ -55,7 +56,8 @@ var (
 	knownAuthorFields    = []string{"name", "github", "email"}
 	knownParameterFields = []string{"key", "macro", "type", "label", "description", "group", "required", "default",
 		"maxLength", "maxItems", "fromProjectName", "values"}
-	knownDistFields = []string{"url", "sha256", "size", "publishedAt"}
+	knownDistFields       = []string{"url", "sha256", "size", "publishedAt"}
+	knownPreviewPDFFields = []string{"url", "sha256", "size", "pages"}
 )
 
 // requiredManifestFields and the rule that reports each one missing.
@@ -69,7 +71,7 @@ var fieldCodes = map[string]string{
 	"schemaVersion": "V02", "id": "V03", "version": "V05", "name": "V06", "description": "V06",
 	"category": "V06", "tags": "V06", "language": "V07", "license": "V08", "authors": "V08", "entry": "V09",
 	"build": "V10", "requires": "V11", "parameters": "V13", "modes": "V16", "preview": "V17",
-	"components": "V18", "dist": "V19",
+	"components": "V18", "dist": "V19", "previewPdf": "V17",
 }
 
 // ValidateManifest parses and validates template.json (§3–§5, rules V01–V20).
@@ -121,6 +123,7 @@ func ValidateManifest(data []byte, opt Options) (*Manifest, Report) {
 	v.preview()
 	v.components()
 	v.dist()
+	v.previewPDF()
 	return &m, r.report
 }
 
@@ -195,6 +198,7 @@ func checkUnknownFields(r *reporter, raw map[string]json.RawMessage) {
 	nested("build", knownBuildFields)
 	nested("requires", knownRequiresFields)
 	nested("dist", knownDistFields)
+	nested("previewPdf", knownPreviewPDFFields)
 	list := func(field string, known []string) {
 		var items []map[string]json.RawMessage
 		if json.Unmarshal(raw[field], &items) == nil {
@@ -506,6 +510,38 @@ func (v *manifestValidator) dist() {
 	}
 	if d.Size < 1 || d.Size > MaxBundleBytes {
 		v.r.errorf("V19", "dist.size", "%d no está entre 1 y %d bytes", d.Size, MaxBundleBytes)
+	}
+}
+
+// previewPDF applies V19 (forbidden in the repository) and V17 (valid when
+// published) to the sample PDF of §6.1. It is optional when published.
+func (v *manifestValidator) previewPDF() {
+	p := v.m.PreviewPDF
+	if v.opt.Origin == OriginRepository {
+		if v.has("previewPdf") {
+			v.r.errorf("V19", "previewPdf", "no va en el repositorio: la CI de publicación compila y añade la vista previa")
+		}
+		return
+	}
+	if p == nil {
+		return
+	}
+	checkPreviewPDF(v.r, "previewPdf", p)
+}
+
+// checkPreviewPDF applies V17 to a previewPdf block (manifest or index entry).
+func checkPreviewPDF(r *reporter, field string, p *PreviewPDF) {
+	if !strings.HasPrefix(p.URL, "https://") {
+		r.errorf("V17", field+".url", "%q debe ser una URL https", p.URL)
+	}
+	if !ValidSHA256(p.SHA256) {
+		r.errorf("V17", field+".sha256", "debe tener 64 dígitos hexadecimales en minúscula")
+	}
+	if p.Size < 1 || p.Size > MaxPreviewPDFBytes {
+		r.errorf("V17", field+".size", "%d no está entre 1 byte y %d MB", p.Size, MaxPreviewPDFBytes>>20)
+	}
+	if p.Pages < 1 || p.Pages > MaxPreviewPDFPages {
+		r.errorf("V17", field+".pages", "%d no está entre 1 y %d", p.Pages, MaxPreviewPDFPages)
 	}
 }
 

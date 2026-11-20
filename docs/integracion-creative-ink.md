@@ -58,8 +58,9 @@ https://galigaribaldi.github.io/Memorandum-tex/
 
 Cada `<archivo>.sig` es la firma Ed25519 de los bytes exactos del JSON (contrato §7.1).
 
-Bundles (GitHub Releases, un tag por plantilla y versión)
+Bundles y vistas previas en PDF (GitHub Releases, un tag por plantilla y versión)
 https://github.com/galigaribaldi/Memorandum-tex/releases/download/<id>-v<version>/<id>-<version>.zip
+https://github.com/galigaribaldi/Memorandum-tex/releases/download/<id>-v<version>/<id>-<version>-preview.pdf
 ```
 
 - Las rutas dentro de `index.json` son **relativas a la URL del índice**. La librería las resuelve. Un catálogo
@@ -330,7 +331,7 @@ Memorandum-tex/
 | `pkg/compat` | `Evaluate(m, Env) → Report`, `EvaluateJSON`, `UpdateAvailable` | ✅ 2026-11-11 | No: Creative-Ink le pasa `Env` | No |
 | `pkg/bundle` | `VerifySHA256`, `SafeExtract`/`SafeExtractFile` con las reglas B1–B11; `Collect`/`Build`/`WriteZip` (los usa este repositorio) | ✅ 2026-11-15 | No | No |
 | `pkg/catalogtest` | Solo para tests: construye y **firma** (con una clave efímera) el catálogo de prueba y lo sirve con `httptest.Server` | ⏳ paso 6 | No | Solo local (`127.0.0.1`) |
-| `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get`, `GetPack`; **verificación de firmas**; caché con ETag; resultado sin conexión | ⏳ paso 7 | No | Sí (HTTPS) |
+| `pkg/client` | `Index`, `Manifest`, `Versions`, `Pack`, `Get`, `GetPack`, **`PreviewPDF`** (descarga y verifica la vista previa sin bajar el bundle); **verificación de firmas**; caché con ETag; resultado sin conexión | ⏳ paso 7 | No | Sí (HTTPS) |
 
 **API.** Las partes de `params`, `compat` y `bundle` son las **firmas reales**. La parte de `client` es una
 **propuesta**: se cierra en el paso 7 y se actualizará aquí. Normalmente Creative-Ink no llamará a `bundle`
@@ -494,6 +495,12 @@ estado.
    automáticos de actualizaciones. Solo cuando el usuario ejecuta `ci templates …`.
 10. **`templates.sources` solo en la capa del usuario** (RQ-9). Los catálogos de terceros se muestran marcados y sus
     fallos no afectan al oficial.
+11. **La vista previa en PDF es contenido externo que dibuja PDF.js** (recomendación del 2026-11-15).
+    - **Antes de mostrarla:** se verifica siempre su `sha256` (lo hará `client`).
+    - **Catálogo oficial:** la firma garantiza que el PDF salió de nuestra CI.
+    - **Catálogos de terceros sin firma:** se recomienda **no mostrar** su `previewPdf`, o avisar antes. Un PDF
+      malicioso es un vector conocido contra los visores, y es justo el riesgo de "JavaScript ajeno en el WebView" que
+      ya señala la §4.3.4 del MAP de Creative-Ink.
 
 ## 9. Comandos `ci` propuestos (sugerencia; los decide Creative-Ink)
 
@@ -630,6 +637,29 @@ Casillas de seguimiento (se marcan con fecha al cerrar):
    parámetro `bibliografia=biber`) fallarían hasta que lea ese campo. Las de este repositorio usan BibTeX por defecto.
 3. **Servicio de configuración:** tipos lista y enum, y la capa permitida por clave.
 
+### 12.3 bis. Solicitudes de Creative-Ink recibidas el 2026-11-15 (pendientes del lado de Memorandum-tex)
+
+Registradas como decisiones 18–20 del MAP de Memorandum-tex. **Estado a 2026-11-15:**
+- ✅ **especificadas** en el contrato §6.1;
+- ✅ **`pkg/contract`:** tipo `contract.PreviewPDF{URL, SHA256, Size, Pages}` en `Manifest.PreviewPDF` y
+  `IndexTemplate.PreviewPDF`, validado en V17 y prohibido en el repositorio (V19);
+- ⏳ **pendientes:** `catalogtest` publicará un PDF de prueba (paso 6), `client` lo descargará y verificará (paso 7) y
+  la CI compilará los reales (M7).
+
+Decisiones del programador:
+- **Alojamiento:** asset de la misma Release que el zip, `<id>-<versión>-preview.pdf`.
+- **Límite:** 5 MB.
+- **Contenido:** se compila con los valores por defecto y el `defaultEngine`.
+
+1. **`preview.pdf` por plantilla:**
+   - **Qué es:** un PDF compilado por la CI con los valores por defecto.
+   - **Integridad:** `sha256` y tamaño en el manifiesto firmado, con un límite de tamaño en el contrato (V17).
+   - **Descarga:** `client` lo descarga y lo verifica sin bajar el bundle.
+   - **`preview.png`:** se mantiene para las miniaturas.
+2. **Número de páginas del PDF de muestra** (opcional, para una animación futura).
+3. **Catálogos de terceros:** solo se compilan desde la Terminal CI. No cambia la librería, y el `preview.pdf` debe ser
+   opcional.
+
 ### 12.4 Rediseño de UI/UX de Creative-Ink (`DEV-feat-UX-Editor`), decidido por el programador el 2026-11-11
 
 No afecta al catálogo. Se registra aquí porque las respuestas llegaron en el mismo mensaje:
@@ -719,3 +749,10 @@ No afecta al catálogo. Se registra aquí porque las respuestas llegaron en el m
   - **`sha256`:** reproducible con la misma versión de Go; por eso el cliente **verifica** el hash del catálogo firmado
     y nunca lo recalcula a partir de las fuentes.
   - **Validación de carpeta:** implementada en `internal/validate`, solo para este repositorio.
+- **2026-11-15 (solicitud de Creative-Ink: vista previa en PDF):**
+  - **Análisis:** no es crítica ni bloquea C0–C2, pero se incorpora antes del paso 6 para no reabrir `catalogtest` y
+    `client`.
+  - **Especificación:** `previewPdf {url, sha256, size ≤ 5 MB, pages}` en el manifiesto publicado y en el índice
+    (contrato §6.1). Es un asset de la Release, opcional, y lo cubre la firma del JSON.
+  - **Implementación:** ya en `pkg/contract` (V17 y V19).
+  - **Nota de seguridad:** no mostrar el PDF de catálogos sin firma (§8.11).

@@ -100,6 +100,7 @@ Vive en `templates/<categoria>/<id>/template.json`.
 | `modes` | string[] | Sí | §5. Incluye `completo` |
 | `preview` | string | No | PNG relativo a la carpeta de la plantilla, 200 KB como máximo |
 | `dist` | objeto | No | **Prohibido en el repositorio.** Lo añade la publicación (§6) |
+| `previewPdf` | objeto | No | **Prohibido en el repositorio.** Lo añade la publicación: la vista previa en PDF (§6.1) |
 
 ### 3.1 `build`
 
@@ -205,6 +206,30 @@ Al publicar, `inkt index` escribe `catalog/v1/templates/<id>/<versión>/template
 }
 ```
 
+### 6.1 Vista previa en PDF (`previewPdf`, decisión del 2026-11-15)
+
+Creative-Ink muestra un PDF de muestra antes de descargar la plantilla. Lo genera la CI de publicación y se describe
+en el manifiesto publicado (y en el índice, §7):
+
+```json
+"previewPdf": {
+  "url": "https://github.com/galigaribaldi/Memorandum-tex/releases/download/ensayo-v1.0.0/ensayo-1.0.0-preview.pdf",
+  "sha256": "…(64 hexadecimales en minúscula)",
+  "size": 81234,
+  "pages": 3
+}
+```
+
+- **Cómo se genera:** la CI compila el `entry` con el `defaultEngine`, en modo `completo` y **sin `ink-params.tex`**
+  (valores por defecto). El número de páginas sale del `.log` ("Output written on … (N pages)").
+- **Dónde se aloja:** como asset de la **misma Release** que el zip (`<id>-<versión>-preview.pdf`). Releases no tiene
+  límite total y cada versión es inmutable; Pages se reserva para los JSON y las miniaturas.
+- **Límites (V17):** `size` de 1 byte a **5 MB**; `pages` de 1 a 10 000; `url` https; `sha256` de 64 hexadecimales.
+  La CI rechaza la publicación si el PDF generado supera 5 MB.
+- **Integridad:** su `sha256` va dentro del JSON firmado (§7.1), así que el cliente verifica el PDF **antes de
+  mostrarlo**, igual que un zip. Se descarga por separado del bundle.
+- **Opcional:** un catálogo de terceros puede no traerlo. `preview.png` se mantiene para las miniaturas.
+
 `catalog/v1/templates/<id>/versions.json` (más nueva primero; rutas relativas a este archivo):
 
 ```json
@@ -247,6 +272,7 @@ Al publicar, `inkt index` escribe `catalog/v1/templates/<id>/<versión>/template
       "manifest": "templates/ensayo/1.0.0/template.json",
       "versions": "templates/ensayo/versions.json",
       "preview": "templates/ensayo/1.0.0/preview.png",
+      "previewPdf": { "url": "https://github.com/…/ensayo-1.0.0-preview.pdf", "sha256": "…", "size": 81234, "pages": 3 },
       "dist": { "url": "https://github.com/…/ensayo-1.0.0.zip", "sha256": "…", "size": 482113 }
     }
   ],
@@ -275,8 +301,8 @@ cada `versions.json`, cada manifiesto publicado y cada paquete. La firma va en u
   (`crypto/ed25519`).
 - **Por qué todos los JSON y no solo el índice:** el índice describe solo la última versión. Firmar también
   `versions.json` y los manifiestos antiguos impide servir una versión vieja con un zip falso. Los zips quedan cubiertos
-  porque su `sha256` va dentro de un JSON firmado. Las miniaturas (`preview.png`) no se firman: solo se muestran, y la
-  librería limita su tamaño.
+  porque su `sha256` va dentro de un JSON firmado, y lo mismo vale para `previewPdf` (§6.1). Las miniaturas
+  (`preview.png`) no se firman: solo se muestran como imagen, y la librería limita su tamaño.
 - **Catálogo oficial:**
   - **Siempre firmado.** La librería lleva fija la clave pública (o las claves, por `keyId`) y **rechaza** cualquier
     JSON oficial sin firma válida (`ErrSignature`).
@@ -404,9 +430,9 @@ Cada error se reporta **una sola vez, en su regla**: un `id` que ya viola V03 no
 | V14 | Parámetros: `default` válido para su tipo; `boolean` y `enum` lo llevan siempre |
 | V15 | `fromProjectName` solo en un parámetro, y de tipo `string` |
 | V16 | `modes` sin repetir, de §5, e incluye `completo` |
-| V17 | `preview`, si existe: PNG, 200 KB como máximo |
+| V17 | `preview`, si existe: PNG, 200 KB como máximo. `previewPdf` (solo publicado): `url` https, `sha256` válido, `size` de 1 byte a 5 MB y `pages` de 1 a 10 000 (§6.1) |
 | V18 | `components` existen en `shared/` |
-| V19 | Sin `dist` en el repositorio |
+| V19 | Sin `dist` ni `previewPdf` en el repositorio (los añade la publicación); en un manifiesto publicado, `dist` obligatorio y válido |
 | V20 | Campo desconocido en cualquier nivel (raíz, `build`, `requires`, `dist`, `authors[]`, `parameters[]`): **aviso** (posible errata como `defualt`) |
 
 **Contenido de la carpeta**
@@ -478,3 +504,9 @@ Tipados, comparables con `errors.Is` o `errors.As`:
   - **B8:** el `sha256` es reproducible con la misma versión de Go.
   - **B11:** `SafeExtract` también rechaza `shellEscape`.
   - **Extensiones:** se comparan exactas y en minúsculas (`figura.PNG` no vale; se renombra).
+- (2026-11-15) Solicitud de Creative-Ink: **vista previa en PDF** (`previewPdf`, §6.1).
+  - **Dónde va:** en el manifiesto publicado y en el índice, como bloque opcional y compatible (no sube
+    `schemaVersion`).
+  - **Contenido:** `url`, `sha256`, `size` (≤ 5 MB) y `pages`.
+  - **Alojamiento:** Releases.
+  - **Validación:** prohibido en el repositorio (V19) y validado en V17.

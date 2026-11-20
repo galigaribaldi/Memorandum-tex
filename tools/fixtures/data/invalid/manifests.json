@@ -106,6 +106,10 @@
       "code": "V19", "level": "error", "name": "dist-en-repositorio",
       "patch": { "dist": { "url": "https://example.org/x.zip", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "size": 1 } }
     },
+    {
+      "code": "V19", "level": "error", "name": "preview-pdf-en-repositorio",
+      "patch": { "previewPdf": { "url": "https://example.org/x-preview.pdf", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "size": 1, "pages": 1 } }
+    },
     { "code": "V20", "level": "warning", "name": "campo-desconocido", "patch": { "engine": "pdflatex" } }
   ]
 }

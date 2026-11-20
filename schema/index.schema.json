@@ -39,6 +39,7 @@
           "manifest": { "$ref": "#/definitions/ref" },
           "versions": { "$ref": "#/definitions/ref" },
           "preview": { "$ref": "#/definitions/ref" },
+          "previewPdf": { "$ref": "template.schema.json#/definitions/previewPdf" },
           "dist": { "$ref": "template.schema.json#/definitions/dist" }
         }
       }
